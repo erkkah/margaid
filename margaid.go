@@ -31,6 +31,8 @@ type Margaid struct {
 
 	projections map[Axis]Projection
 	ranges      map[Axis]minmax
+
+	plots []string
 }
 
 type minmax struct{ min, max float64 }
@@ -161,14 +163,14 @@ func (m *Margaid) Axis(series string, axis Axis, ticker Ticker) {
 func (m *Margaid) Legend(series []string) {
 }
 
-// AxisSelection specified which axis to use
+// AxisSelection specified which axes to use
 type AxisSelection struct {
 	x Axis
 	y Axis
 }
 
-// UsingAxis selects the x and y axis for plotting
-func UsingAxis(x, y Axis) AxisSelection {
+// UsingAxes selects the x and y axis for plotting
+func UsingAxes(x, y Axis) AxisSelection {
 	return AxisSelection{
 		x: x,
 		y: y,
@@ -176,30 +178,17 @@ func UsingAxis(x, y Axis) AxisSelection {
 }
 
 // Line draws a series using straight lines
-func (m *Margaid) Line(series *Series, axis ...AxisSelection) {
-	xAxis := XAxis
-	yAxis := YAxis
-	for _, s := range axis {
-		xAxis = s.x
-		yAxis = s.y
-	}
-	var points []struct{ X, Y float64 }
-	values := series.Values()
-
-	var err error
-
-	for values.Next() {
-		v := values.Get()
-		v.X, err = m.project(v.X, xAxis)
-		v.Y, err = m.project(v.Y, yAxis)
-		points = append(points, v)
-	}
+func (m *Margaid) Line(series *Series, axes ...AxisSelection) {
+	xAxis, yAxis := getSelectedAxes(axes)
+	points, err := m.getProjectedValues(series, xAxis, yAxis)
 	if err != nil {
 		m.error(err.Error())
 		return
 	}
 
-	m.g.StrokeWidth("3px").Fill("none")
+	id := m.addPlot(series.title)
+	color := getPlotColor(id)
+	m.g.StrokeWidth("3px").Fill("none").Stroke(color)
 
 	plotWidth := m.width - 2*m.inset
 	plotHeight := m.height - 2*m.inset
@@ -228,6 +217,26 @@ func (m *Margaid) error(message string) {
 		Text(5, m.inset/2, xmlEscape(message))
 }
 
+// Smooth draws one series as a smooth curve
+func (m *Margaid) Smooth(series string) {
+}
+
+// Bar draws bars for the specified series
+func (m *Margaid) Bar(series string) {
+}
+
+// Frame draws a frame around the chart area
+func (m *Margaid) Frame() {
+	m.g.Fill("none").Stroke("black").StrokeWidth("2px")
+	m.g.Rect(m.inset, m.inset, m.width-m.inset*2, m.height-m.inset*2)
+}
+
+// Render renders the graph to the given destination.
+func (m *Margaid) Render(writer io.Writer) {
+	rendered := m.g.Render()
+	writer.Write([]byte(rendered))
+}
+
 func (m *Margaid) project(value float64, axis Axis) (float64, error) {
 	min := m.ranges[axis].min
 	max := m.ranges[axis].max
@@ -249,22 +258,36 @@ func (m *Margaid) project(value float64, axis Axis) (float64, error) {
 	return projected, nil
 }
 
-// Smooth draws one series as a smooth curve
-func (m *Margaid) Smooth(series string) {
+func (m *Margaid) getProjectedValues(series *Series, xAxis, yAxis Axis) (points []struct{ X, Y float64 }, err error) {
+	values := series.Values()
+	for values.Next() {
+		v := values.Get()
+		v.X, err = m.project(v.X, xAxis)
+		v.Y, err = m.project(v.Y, yAxis)
+		points = append(points, v)
+	}
+	return
 }
 
-// Bar draws bars for the specified series
-func (m *Margaid) Bar(series string) {
+func getSelectedAxes(axes []AxisSelection) (xAxis, yAxis Axis) {
+	xAxis = XAxis
+	yAxis = YAxis
+	for _, s := range axes {
+		xAxis = s.x
+		yAxis = s.y
+	}
+	return
 }
 
-// Frame draws a frame around the chart area
-func (m *Margaid) Frame() {
-	m.g.Fill("none").Stroke("black").StrokeWidth("2px")
-	m.g.Rect(m.inset, m.inset, m.width-m.inset*2, m.height-m.inset*2)
+func (m *Margaid) addPlot(name string) int {
+	id := len(m.plots)
+	m.plots = append(m.plots, name)
+	return id
 }
 
-// Render renders the graph to the given destination.
-func (m *Margaid) Render(writer io.Writer) {
-	rendered := m.g.Render()
-	writer.Write([]byte(rendered))
+func getPlotColor(id int) string {
+	color := 127*id + 270
+	hue := color % 360
+	saturation := 70 + ((color/360)*13)%30
+	return fmt.Sprintf("hsl(%d, %d%%, 50%%)", hue, saturation)
 }
