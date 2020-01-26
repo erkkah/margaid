@@ -9,17 +9,20 @@ import (
 // Series is the plottable type in Margaid
 type Series struct {
 	values *list.List
-	min    float64
-	max    float64
+	minX   float64
+	maxX   float64
+	minY   float64
+	maxY   float64
 
+	title  string
 	capper Capper
 }
 
-// Option is the base type for all series options
-type Option func(s *Series)
+// SeriesOption is the base type for all series options
+type SeriesOption func(s *Series)
 
 // NewSeries - series constructor
-func NewSeries(options ...Option) *Series {
+func NewSeries(options ...SeriesOption) *Series {
 	self := &Series{
 		values: list.New(),
 	}
@@ -36,16 +39,58 @@ func (s *Series) Size() int {
 	return s.values.Len()
 }
 
-// Min returns the series smallest y value, or 0.0 if
+// MinX returns the series smallest x value, or 0.0 if
 // the series is empty
-func (s *Series) Min() float64 {
-	return s.min
+func (s *Series) MinX() float64 {
+	return s.minX
 }
 
-// Max returns the series largest y value, or 0.0 if
+// MaxX returns the series largest x value, or 0.0 if
 // the series is empty
-func (s *Series) Max() float64 {
-	return s.max
+func (s *Series) MaxX() float64 {
+	return s.maxX
+}
+
+// MinY returns the series smallest y value, or 0.0 if
+// the series is empty
+func (s *Series) MinY() float64 {
+	return s.minY
+}
+
+// MaxY returns the series largest y value, or 0.0 if
+// the series is empty
+func (s *Series) MaxY() float64 {
+	return s.maxY
+}
+
+// SeriesIterator helps iterating series values
+type SeriesIterator struct {
+	list    *list.List
+	element *list.Element
+}
+
+// Get returns the iterator current value.
+// A newly created iterator has no current value.
+func (si *SeriesIterator) Get() Value {
+	return si.element.Value.(Value)
+}
+
+// Next steps to the next value.
+// A newly created iterator has no current value.
+func (si *SeriesIterator) Next() bool {
+	if si.element == nil {
+		si.element = si.list.Front()
+	} else {
+		si.element = si.element.Next()
+	}
+	return si.element != nil
+}
+
+// Values returns an iterator to the series values
+func (s *Series) Values() SeriesIterator {
+	return SeriesIterator{
+		list: s.values,
+	}
 }
 
 // Value is the type of each series element.
@@ -56,8 +101,8 @@ type Value struct {
 	Y float64
 }
 
-// ValueAtTime creates a Value from a Y value and timestamp.
-func ValueAtTime(y float64, timestamp time.Time) Value {
+// ValueAtTime creates a Value from a y value and timestamp.
+func ValueAtTime(timestamp time.Time, y float64) Value {
 	x := float64(timestamp.UnixNano()) / 1E9
 	return Value{
 		X: x,
@@ -65,8 +110,8 @@ func ValueAtTime(y float64, timestamp time.Time) Value {
 	}
 }
 
-// MakeValue creates a Value from y and x values.
-func MakeValue(y float64, x float64) Value {
+// MakeValue creates a Value from x and y values.
+func MakeValue(x float64, y float64) Value {
 	return Value{X: x, Y: y}
 }
 
@@ -81,11 +126,15 @@ func (v Value) GetXAsTime() time.Time {
 // will be applied.
 func (s *Series) Add(v Value) {
 	if s.values.Len() == 0 {
-		s.min = v.Y
-		s.max = v.Y
+		s.minX = v.X
+		s.maxX = v.X
+		s.minY = v.Y
+		s.maxY = v.Y
 	} else {
-		s.min = math.Min(s.min, v.Y)
-		s.max = math.Max(s.max, v.Y)
+		s.minX = math.Min(s.minX, v.X)
+		s.maxX = math.Max(s.maxX, v.X)
+		s.minY = math.Min(s.minY, v.Y)
+		s.maxY = math.Max(s.maxY, v.Y)
 	}
 	s.values.PushBack(v)
 	if s.capper != nil {
@@ -97,7 +146,7 @@ func (s *Series) Add(v Value) {
 type Capper func(values *list.List)
 
 // CappedBySize caps a series to at most cap values.
-func CappedBySize(cap int) Option {
+func CappedBySize(cap int) SeriesOption {
 	return func(s *Series) {
 		s.capper = func(values *list.List) {
 			for values.Len() > cap {
@@ -109,7 +158,7 @@ func CappedBySize(cap int) Option {
 
 // CappedByAge caps a series by removing values older than cap
 // in relation to the current value of the reference funcion.
-func CappedByAge(cap time.Duration, reference func() time.Time) Option {
+func CappedByAge(cap time.Duration, reference func() time.Time) SeriesOption {
 	return func(s *Series) {
 		s.capper = func(values *list.List) {
 			for values.Len() > 0 {
@@ -122,5 +171,12 @@ func CappedByAge(cap time.Duration, reference func() time.Time) Option {
 				values.Remove(first)
 			}
 		}
+	}
+}
+
+// Titled sets the series title
+func Titled(title string) SeriesOption {
+	return func(s *Series) {
+		s.title = title
 	}
 }
