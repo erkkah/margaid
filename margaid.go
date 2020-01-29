@@ -7,19 +7,10 @@ import (
 	"io"
 	"math"
 	"strconv"
+	"time"
 
 	"github.com/erkkah/margaid/svg"
 )
-
-//https://developer.mozilla.org/en-US/docs/Web/SVG/Element/marker
-
-/*
-   <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5"
-        markerWidth="6" markerHeight="6"
-        orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" />
-	</marker>
-*/
 
 // Margaid == diagraM
 type Margaid struct {
@@ -45,7 +36,7 @@ func New(width, height int, options ...Option) *Margaid {
 	self := &Margaid{
 		g: svg.New(width, height),
 
-		inset:  32,
+		inset:  64,
 		width:  float64(width),
 		height: float64(height),
 
@@ -124,7 +115,7 @@ func (m *Margaid) Title(title string) {
 		FontStyle(svg.StyleNormal, svg.WeightLighter).
 		Alignment(svg.HAlignMiddle, svg.VAlignCentral).
 		Transform().
-		StrokeWidth("0").Fill("black").
+		Fill("black").
 		Text(m.width/2, m.inset/2, title)
 }
 
@@ -142,12 +133,39 @@ const (
 	Y1Axis = YAxis
 )
 
-// Ticker converts values to strings for drawing tick marks
-type Ticker func(Value) string
+// Ticker provides tick marks and labels for axes
+type Ticker interface {
+	label(value float64) string
+	start(valueRange float64, steps int) float64
+	next(previous float64) float64
+}
 
 // TimeTicker returns time valued tick labels in the specified time format.
-func TimeTicker(value Value, format string) string {
-	return value.GetXAsTime().Format(format)
+func TimeTicker(format string) Ticker {
+	return &timeTicker{format, 1}
+}
+
+type timeTicker struct {
+	format string
+	step   float64
+}
+
+func (t *timeTicker) label(value float64) string {
+	return TimeFromSeconds(value).Format(t.format)
+}
+
+func (t *timeTicker) start(valueRange float64, steps int) float64 {
+	scaleDuration := TimeFromSeconds(valueRange).Sub(time.Unix(0, 0))
+
+	t.step = math.Pow(10.0, math.Trunc(math.Log10(scaleDuration.Seconds()/float64(steps))))
+	for int(valueRange/t.step) > steps {
+		t.step *= 2
+	}
+	return t.step
+}
+
+func (t *timeTicker) next(previous float64) float64 {
+	return previous + t.step
 }
 
 // ValueTicker returns tick labels by converting floats using strconv.FormatFloat
@@ -156,7 +174,103 @@ func ValueTicker(value Value, style byte, precision int) string {
 }
 
 // Axis draws tick marks and labels using the specified ticker
-func (m *Margaid) Axis(series string, axis Axis, ticker Ticker) {
+func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker) {
+	var min float64
+	var max float64
+	var xOffset float64 = m.inset
+	var yOffset float64 = m.inset
+	var axisLength float64
+	var xMult float64 = 0
+	var yMult float64 = 0
+	var tickSign float64 = 1
+	var vAlignment svg.VAlignment
+	var hAlignment svg.HAlignment
+
+	switch axis {
+	case X1Axis:
+		min = series.MinX()
+		max = series.MaxX()
+		yOffset = m.height - m.inset
+		axisLength = m.width
+		xMult = 1
+		tickSign = -1
+		hAlignment = svg.HAlignMiddle
+		vAlignment = svg.VAlignTop
+	case X2Axis:
+		min = series.MinX()
+		max = series.MaxX()
+		axisLength = m.width
+		xMult = 1
+		hAlignment = svg.HAlignMiddle
+		vAlignment = svg.VAlignBottom
+	case Y1Axis:
+		min = series.MinY()
+		max = series.MaxY()
+		yOffset = m.height - m.inset
+		axisLength = m.height
+		yMult = 1
+		tickSign = -1
+		hAlignment = svg.HAlignEnd
+		vAlignment = svg.VAlignCentral
+	case Y2Axis:
+		min = series.MinY()
+		max = series.MaxY()
+		xOffset = m.width - m.inset
+		yOffset = m.height - m.inset
+		axisLength = m.height
+		yMult = 1
+		vAlignment = svg.VAlignCentral
+		hAlignment = svg.HAlignStart
+	}
+
+	const tickDistance = 75
+	steps := axisLength / tickDistance
+	start := ticker.start(max-min, int(steps))
+
+	tick := min + start
+	tick -= math.Mod(tick, start)
+
+	m.g.Transform(
+		svg.Translation(xOffset, yOffset),
+		svg.Scaling(1, -1),
+	).
+		StrokeWidth("2px").
+		Stroke("black")
+
+	firstTick := tick
+
+	for tick < max {
+		// ??? Ignore error :(
+		value, _ := m.project(tick, axis)
+		m.g.Polyline([]struct{ X, Y float64 }{
+			{value * xMult, value * yMult},
+			{value*xMult + tickSign*6*(1-xMult), value*yMult + tickSign*(1-yMult)*6},
+		}...)
+
+		tick = ticker.next(tick)
+	}
+
+	m.g.Transform(
+		svg.Translation(xOffset, yOffset),
+		svg.Scaling(1, 1),
+	).
+		Stroke("none").
+		Font("sans-serif", "10pt").
+		FontStyle(svg.StyleNormal, svg.WeightLighter).
+		Alignment(hAlignment, vAlignment)
+
+	tick = firstTick
+
+	for tick < max {
+		// ??? Ignore error :(
+		value, _ := m.project(tick, axis)
+		m.g.Text(
+			value*xMult+(tickSign)*10*(1-xMult),
+			-value*yMult+(-tickSign)*10*(1-yMult),
+			ticker.label(tick))
+
+		tick = ticker.next(tick)
+	}
 }
 
 // Legend draws a legend box for the specified set of series
@@ -190,12 +304,9 @@ func (m *Margaid) Line(series *Series, axes ...AxisSelection) {
 	color := getPlotColor(id)
 	m.g.StrokeWidth("3px").Fill("none").Stroke(color)
 
-	plotWidth := m.width - 2*m.inset
-	plotHeight := m.height - 2*m.inset
-
 	m.g.Transform(
 		svg.Translation(m.inset, m.height-m.inset),
-		svg.Scaling(plotWidth, -plotHeight),
+		svg.Scaling(1, -1),
 	)
 	m.g.Polyline(points...)
 	m.g.Transform()
@@ -237,6 +348,9 @@ func (m *Margaid) Render(writer io.Writer) {
 	writer.Write([]byte(rendered))
 }
 
+// Projects a value onto an axis using the current projection
+// setting.
+// The value returned is in user coordinates, [0..1] * width for the x-axis.
 func (m *Margaid) project(value float64, axis Axis) (float64, error) {
 	min := m.ranges[axis].min
 	max := m.ranges[axis].max
@@ -254,7 +368,14 @@ func (m *Margaid) project(value float64, axis Axis) (float64, error) {
 		max = math.Log10(max)
 	}
 
-	projected = (projected - min) / (max - min)
+	var axisLength float64
+	switch {
+	case axis == X1Axis || axis == X2Axis:
+		axisLength = m.width - 2*m.inset
+	case axis == Y1Axis || axis == Y2Axis:
+		axisLength = m.height - 2*m.inset
+	}
+	projected = axisLength * (projected - min) / (max - min)
 	return projected, nil
 }
 

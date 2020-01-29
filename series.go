@@ -101,25 +101,9 @@ type Value struct {
 	Y float64
 }
 
-// ValueAtTime creates a Value from a y value and timestamp.
-func ValueAtTime(timestamp time.Time, y float64) Value {
-	x := float64(timestamp.UnixNano()) / 1E9
-	return Value{
-		X: x,
-		Y: y,
-	}
-}
-
 // MakeValue creates a Value from x and y values.
 func MakeValue(x float64, y float64) Value {
 	return Value{X: x, Y: y}
-}
-
-// GetXAsTime returns a Value X part as time.
-func (v Value) GetXAsTime() time.Time {
-	secs := int64(v.X)
-	nanos := int64((v.X - float64(secs)) * 1E9)
-	return time.Unix(secs, nanos)
 }
 
 // Add appends a value. If the series is capped, capping
@@ -164,7 +148,7 @@ func CappedByAge(cap time.Duration, reference func() time.Time) SeriesOption {
 			for values.Len() > 0 {
 				first := values.Front()
 				val := first.Value.(Value)
-				xTime := val.GetXAsTime()
+				xTime := TimeFromSeconds(val.X)
 				if !xTime.Before(reference().Add(-cap)) {
 					break
 				}
@@ -179,4 +163,16 @@ func Titled(title string) SeriesOption {
 	return func(s *Series) {
 		s.title = title
 	}
+}
+
+// TimeFromSeconds converts from seconds since the epoch to time.Time
+func TimeFromSeconds(seconds float64) time.Time {
+	wholeSecs := int64(seconds)
+	nanos := int64((seconds - float64(wholeSecs)) * 1E9)
+	return time.Unix(wholeSecs, nanos)
+}
+
+// SecondsFromTime converts from time.Time to seconds since the epoch
+func SecondsFromTime(time time.Time) float64 {
+	return float64(time.UnixNano()) / 1E9
 }
