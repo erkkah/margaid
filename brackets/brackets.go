@@ -7,19 +7,14 @@ import (
 )
 
 // Brackets is a simple DOM-ish structure builder
-type Brackets interface {
-	Add(string, ...Attributes) Brackets
-	Open(string, ...Attributes) Brackets
-	Text(string) Brackets
-	Close() Brackets
-	CloseAll() Brackets
-	Current() string
-	String() string
+type Brackets struct {
+	elementStack *list.List
+	elements     *list.List
 }
 
 // New - Brackets constructor
-func New() Brackets {
-	return &brackets{
+func New() *Brackets {
+	return &Brackets{
 		elementStack: list.New(),
 		elements:     list.New(),
 	}
@@ -45,11 +40,6 @@ func (am Attributes) String() string {
 	}
 
 	return strings.Join(attributes, " ")
-}
-
-type brackets struct {
-	elementStack *list.List
-	elements     *list.List
 }
 
 type elementKind int
@@ -94,13 +84,13 @@ func (e *element) String() string {
 	return builder.String()
 }
 
-func (b *brackets) Add(name string, attrs ...Attributes) Brackets {
+func (b *Brackets) Add(name string, attrs ...Attributes) *Brackets {
 	b.Open(name, attrs...)
 	b.Close()
 	return b
 }
 
-func (b *brackets) topElement() *element {
+func (b *Brackets) topElement() *element {
 	if b.elementStack.Len() != 0 {
 		top := b.elementStack.Back()
 		return top.Value.(*element)
@@ -108,13 +98,13 @@ func (b *brackets) topElement() *element {
 	return nil
 }
 
-func (b *brackets) popElement() *element {
+func (b *Brackets) popElement() *element {
 	top := b.elementStack.Back()
 	b.elementStack.Remove(top)
 	return top.Value.(*element)
 }
 
-func (b *brackets) Open(name string, attrs ...Attributes) Brackets {
+func (b *Brackets) Open(name string, attrs ...Attributes) *Brackets {
 	if top := b.topElement(); top != nil {
 		top.hasChildren = true
 	}
@@ -130,7 +120,7 @@ func (b *brackets) Open(name string, attrs ...Attributes) Brackets {
 	return b
 }
 
-func (b *brackets) Text(txt string) Brackets {
+func (b *Brackets) Text(txt string) *Brackets {
 	if top := b.topElement(); top != nil {
 		top.hasChildren = true
 	}
@@ -142,7 +132,7 @@ func (b *brackets) Text(txt string) Brackets {
 	return b
 }
 
-func (b *brackets) Close() Brackets {
+func (b *Brackets) Close() *Brackets {
 	top := b.popElement()
 	if top.hasChildren {
 		b.elements.PushBack(&element{
@@ -155,14 +145,14 @@ func (b *brackets) Close() Brackets {
 	return b
 }
 
-func (b *brackets) CloseAll() Brackets {
+func (b *Brackets) CloseAll() *Brackets {
 	for b.elementStack.Len() > 0 {
 		b.Close()
 	}
 	return b
 }
 
-func (b *brackets) Current() string {
+func (b *Brackets) Current() string {
 	top := b.topElement()
 	if top != nil {
 		return top.name
@@ -170,7 +160,12 @@ func (b *brackets) Current() string {
 	return ""
 }
 
-func (b *brackets) String() string {
+func (b *Brackets) Append(other *Brackets) *Brackets {
+	b.elements.PushBackList(other.elements)
+	return b
+}
+
+func (b *Brackets) String() string {
 	var builder strings.Builder
 
 	for e := b.elements.Front(); e != nil; e = e.Next() {

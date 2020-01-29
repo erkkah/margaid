@@ -10,11 +10,13 @@ import (
 
 // SVG builds SVG format images using a small subset of the standard
 type SVG struct {
-	brackets br.Brackets
+	brackets *br.Brackets
 
 	transforms  []Transform
 	attributes  br.Attributes
 	styleInSync bool
+
+	parent *SVG
 }
 
 // Transform represents a transform function
@@ -25,7 +27,19 @@ type Transform struct {
 
 // New - SVG constructor
 func New(width int, height int) *SVG {
-	self := &SVG{
+	self := makeSVG()
+	self.brackets.Open("svg", br.Attributes{
+		"width":               strconv.Itoa(width),
+		"height":              strconv.Itoa(height),
+		"viewbox":             fmt.Sprintf("0 0 %d %d", width, height),
+		"preserveAspectRatio": "xMidYMid meet",
+		"xmlns":               "http://www.w3.org/2000/svg",
+	})
+	return &self
+}
+
+func makeSVG() SVG {
+	return SVG{
 		brackets: br.New(),
 		attributes: br.Attributes{
 			"fill":            "green",
@@ -35,14 +49,28 @@ func New(width int, height int) *SVG {
 			"stroke-linejoin": "round",
 		},
 	}
+}
+
+// Child adds a sub-SVG at x, y
+func (svg *SVG) Child(x, y float64) *SVG {
+	self := makeSVG()
+	self.parent = svg
 	self.brackets.Open("svg", br.Attributes{
-		"width":               strconv.Itoa(width),
-		"height":              strconv.Itoa(height),
-		"viewbox":             fmt.Sprintf("0 0 %d %d", width, height),
-		"preserveAspectRatio": "xMidYMid meet",
-		"xmlns":               "http://www.w3.org/2000/svg",
+		"x": ftos(x),
+		"y": ftos(y),
 	})
-	return self
+	return &self
+}
+
+// Close closes a child SVG and returns the parent.
+// If the current SVG is not a child, this is a noop.
+func (svg *SVG) Close() *SVG {
+	if svg.parent != nil {
+		svg.brackets.CloseAll()
+		svg.parent.brackets.Append(svg.brackets)
+		return svg.parent
+	}
+	return svg
 }
 
 // Render generates SVG code for the current image, and clears the canvas
@@ -87,7 +115,7 @@ func (svg *SVG) Polyline(points ...struct{ X, Y float64 }) *SVG {
 	var builder strings.Builder
 
 	for _, point := range points {
-		builder.WriteString(fmt.Sprintf("%.3f,%.3f ", point.X, point.Y))
+		builder.WriteString(fmt.Sprintf("%e,%e ", point.X, point.Y))
 	}
 
 	svg.updateStyle()
@@ -114,11 +142,16 @@ func (svg *SVG) Rect(x, y, width, height float64) *SVG {
 // Text draws text at x, y
 func (svg *SVG) Text(x, y float64, txt string) *SVG {
 	svg.updateStyle()
-	svg.brackets.Open("text", br.Attributes{
+	attributes := br.Attributes{
 		"x":             ftos(x),
 		"y":             ftos(y),
+		"stroke":        "none",
 		"vector-effect": "non-scaling-stroke",
-	})
+	}
+	if alignment, ok := svg.attributes["dominant-baseline"]; ok {
+		attributes["dominant-baseline"] = alignment
+	}
+	svg.brackets.Open("text", attributes)
 	svg.brackets.Text(txt)
 	svg.brackets.Close()
 	return svg
@@ -162,7 +195,7 @@ func (svg *SVG) Transform(transforms ...Transform) *SVG {
 		builder.WriteString(t.function)
 		builder.WriteRune('(')
 		for _, a := range t.arguments {
-			builder.WriteString(fmt.Sprintf("%.3f ", a))
+			builder.WriteString(fmt.Sprintf("%e ", a))
 		}
 		builder.WriteRune(')')
 	}
@@ -246,20 +279,20 @@ const (
 
 // Vertical text alignment constants
 const (
-	VAlignTop     VAlignment = "top"
-	VAlignCentral            = "central"
-	VAlignBottom             = "bottom"
+	VAlignTop     VAlignment = "hanging"
+	VAlignCentral            = "middle"
+	VAlignBottom             = "baseline"
 )
 
 // Alignment sets current text alignment
 func (svg *SVG) Alignment(horizontal HAlignment, vertical VAlignment) *SVG {
 	svg.setAttribute("text-anchor", string(horizontal))
-	svg.setAttribute("alignment-baseline", string(vertical))
+	svg.setAttribute("dominant-baseline", string(vertical))
 	return svg
 }
 
 /// Utilities
 
 func ftos(value float64) string {
-	return fmt.Sprintf("%.3f", value)
+	return fmt.Sprintf("%e", value)
 }
