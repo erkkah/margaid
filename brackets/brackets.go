@@ -1,12 +1,14 @@
 package brackets
 
 import (
+	"bytes"
 	"container/list"
+	"encoding/xml"
 	"fmt"
 	"strings"
 )
 
-// Brackets is a simple DOM-ish structure builder
+// Brackets is a simple xml-ish structure builder
 type Brackets struct {
 	elementStack *list.List
 	elements     *list.List
@@ -84,12 +86,6 @@ func (e *element) String() string {
 	return builder.String()
 }
 
-func (b *Brackets) Add(name string, attrs ...Attributes) *Brackets {
-	b.Open(name, attrs...)
-	b.Close()
-	return b
-}
-
 func (b *Brackets) topElement() *element {
 	if b.elementStack.Len() != 0 {
 		top := b.elementStack.Back()
@@ -104,6 +100,7 @@ func (b *Brackets) popElement() *element {
 	return top.Value.(*element)
 }
 
+// Open adds a new opening element with optional attributes.
 func (b *Brackets) Open(name string, attrs ...Attributes) *Brackets {
 	if top := b.topElement(); top != nil {
 		top.hasChildren = true
@@ -120,6 +117,16 @@ func (b *Brackets) Open(name string, attrs ...Attributes) *Brackets {
 	return b
 }
 
+// Add adds a self-closing element
+func (b *Brackets) Add(name string, attrs ...Attributes) *Brackets {
+	b.Open(name, attrs...)
+	b.Close()
+	return b
+}
+
+// Text adds text content to the current element.
+// Note that the text is not automatically XML-escaped.
+// Use the XMLEscape function if that is needed.
 func (b *Brackets) Text(txt string) *Brackets {
 	if top := b.topElement(); top != nil {
 		top.hasChildren = true
@@ -132,6 +139,10 @@ func (b *Brackets) Text(txt string) *Brackets {
 	return b
 }
 
+// Close closes the current element. If there are no
+// children (elements or text), the current element will
+// be self-closed. Otherwise a matching close-element
+// will be added.
 func (b *Brackets) Close() *Brackets {
 	top := b.popElement()
 	if top.hasChildren {
@@ -145,6 +156,8 @@ func (b *Brackets) Close() *Brackets {
 	return b
 }
 
+// CloseAll closes all elements to get a complete, matched
+// structure.
 func (b *Brackets) CloseAll() *Brackets {
 	for b.elementStack.Len() > 0 {
 		b.Close()
@@ -152,6 +165,8 @@ func (b *Brackets) CloseAll() *Brackets {
 	return b
 }
 
+// Current returns the name of the current element or the
+// empty string if there is none.
 func (b *Brackets) Current() string {
 	top := b.topElement()
 	if top != nil {
@@ -160,6 +175,7 @@ func (b *Brackets) Current() string {
 	return ""
 }
 
+// Append adds all elements from another Brackets instance
 func (b *Brackets) Append(other *Brackets) *Brackets {
 	b.elements.PushBackList(other.elements)
 	return b
@@ -173,4 +189,11 @@ func (b *Brackets) String() string {
 	}
 
 	return builder.String()
+}
+
+// XMLEscape returns properly escaped XML equivalent of the provided string
+func XMLEscape(s string) string {
+	var buf bytes.Buffer
+	xml.EscapeText(&buf, []byte(s))
+	return buf.String()
 }
