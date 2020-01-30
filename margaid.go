@@ -71,7 +71,7 @@ const (
 	Log
 )
 
-// WithProjection sets the projection
+// WithProjection sets the projection for a given axis
 func WithProjection(axis Axis, proj Projection) Option {
 	return func(m *Margaid) {
 		m.projections[axis] = proj
@@ -85,7 +85,7 @@ func WithRange(axis Axis, min, max float64) Option {
 	}
 }
 
-// WithAutorange sets range for an axis from the values in a series
+// WithAutorange sets range for an axis from the values of a series
 func WithAutorange(axis Axis, series *Series) Option {
 	return func(m *Margaid) {
 		if axis == X1Axis || axis == X2Axis {
@@ -111,16 +111,11 @@ func WithInset(inset float64) Option {
 	}
 }
 
-// Grid draws a grid for an axis based on the current range
-func (m *Margaid) Grid(axis ...Axis) {
-
-}
-
 // Title draws a title top center
 func (m *Margaid) Title(title string) {
 	m.g.
 		Font("sans-serif", "12pt").
-		FontStyle(svg.StyleNormal, svg.WeightLighter).
+		FontStyle(svg.StyleNormal, svg.WeightBold).
 		Alignment(svg.HAlignMiddle, svg.VAlignCentral).
 		Transform().
 		Fill("black").
