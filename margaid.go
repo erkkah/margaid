@@ -92,15 +92,17 @@ func WithRange(axis Axis, min, max float64) Option {
 func WithAutorange(axis Axis, series *Series) Option {
 	return func(m *Margaid) {
 		if axis == X1Axis || axis == X2Axis {
+			padding := (series.MaxX() - series.MinX()) / float64(series.Size())
+			padding /= 2
 			m.ranges[axis] = minmax{
-				series.MinX(),
-				series.MaxX(),
+				series.MinX() - padding,
+				series.MaxX() + padding,
 			}
 		}
 		if axis == Y1Axis || axis == Y2Axis {
 			m.ranges[axis] = minmax{
 				series.MinY(),
-				series.MaxY(),
+				series.MaxY() + (series.MaxY()-series.MinY())/20,
 			}
 		}
 	}
@@ -149,6 +151,7 @@ func (m *Margaid) error(message string) {
 
 // Frame draws a frame around the chart area
 func (m *Margaid) Frame() {
+	m.g.Transform()
 	m.g.Fill("none").Stroke("black").StrokeWidth("2px")
 	m.g.Rect(m.inset, m.inset, m.width-m.inset*2, m.height-m.inset*2)
 }
