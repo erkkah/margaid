@@ -20,7 +20,8 @@ type Margaid struct {
 	projections map[Axis]Projection
 	ranges      map[Axis]minmax
 
-	plots []string
+	plots       []string
+	colorScheme int
 }
 
 // minmax is the range [min, max] of a chart axis
@@ -53,6 +54,8 @@ func New(width, height int, options ...Option) *Margaid {
 			X2Axis: defaultRange,
 			Y2Axis: defaultRange,
 		},
+
+		colorScheme: 198,
 	}
 
 	for _, o := range options {
@@ -108,6 +111,14 @@ func WithAutorange(axis Axis, series *Series) Option {
 func WithInset(inset float64) Option {
 	return func(m *Margaid) {
 		m.inset = inset
+	}
+}
+
+// WithColorScheme sets the start color for selecting plot colors.
+// The start color is selected as a hue value between 0 and 359.
+func WithColorScheme(scheme int) Option {
+	return func(m *Margaid) {
+		m.colorScheme = scheme % 360
 	}
 }
 
@@ -199,9 +210,9 @@ func (m *Margaid) addPlot(name string) int {
 
 // getPlotColor picks hues and saturations around the color wheel at prime indices.
 // Kind of works for a quick selection of plotting colors.
-func getPlotColor(id int) string {
-	color := 127*id + 270
+func (m *Margaid) getPlotColor(id int) string {
+	color := 211*id + m.colorScheme
 	hue := color % 360
-	saturation := 70 + ((color/360)*13)%30
-	return fmt.Sprintf("hsl(%d, %d%%, 50%%)", hue, saturation)
+	saturation := 47 + (id*41)%53
+	return fmt.Sprintf("hsl(%d, %d%%, 65%%)", hue, saturation)
 }

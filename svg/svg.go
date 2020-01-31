@@ -81,12 +81,50 @@ func (svg *SVG) Render() string {
 	return result
 }
 
+func attributeDiff(old, new br.Attributes) (diff br.Attributes, extendable bool) {
+	diff = br.Attributes{}
+	extendable = true
+
+	for k, newValue := range new {
+		if k == "transform" {
+			extendable = false
+			return
+		}
+		if oldValue, found := old[k]; found {
+			if oldValue != newValue {
+				diff[k] = newValue
+			}
+		} else {
+			diff[k] = newValue
+		}
+	}
+
+	for k := range old {
+		if _, found := new[k]; !found {
+			extendable = false
+			return
+		}
+	}
+	return
+}
+
+func shouldExtendParentStyle(old, new, diff br.Attributes) bool {
+	return diff.Size() < new.Size()
+}
+
 func (svg *SVG) updateStyle() {
 	if !svg.styleInSync {
-		if svg.brackets.Current() == "g" {
-			svg.brackets.Close()
+		current := svg.brackets.Current()
+		nextAttributes := svg.attributes
+		if current != nil && current.Name() == "g" {
+			diff, extendable := attributeDiff(current.Attributes(), svg.attributes)
+			if extendable && shouldExtendParentStyle(current.Attributes(), svg.attributes, diff) {
+				nextAttributes = diff
+			} else {
+				svg.brackets.Close()
+			}
 		}
-		svg.brackets.Open("g", svg.attributes)
+		svg.brackets.Open("g", nextAttributes)
 		svg.styleInSync = true
 	}
 }
@@ -103,27 +141,34 @@ func (svg *SVG) setAttribute(attr string, value string) {
 // Path adds a SVG style path
 func (svg *SVG) Path(path string) *SVG {
 	svg.updateStyle()
-	svg.brackets.Add("path", br.Attributes{
-		"d":             path,
-		"vector-effect": "non-scaling-stroke",
-	})
+	top := svg.brackets.Last()
+	if top.Name() == "path" && strings.TrimSpace(path)[0] == 'M' {
+		commands := top.Attributes()["d"]
+		commands += path
+		top.SetAttribute("d", commands)
+	} else {
+		svg.brackets.Add("path", br.Attributes{
+			"d":             path,
+			"vector-effect": "non-scaling-stroke",
+		})
+	}
 	return svg
 }
 
 // Polyline adds a polyline from a list of points
 func (svg *SVG) Polyline(points ...struct{ X, Y float64 }) *SVG {
-	var builder strings.Builder
-
-	for _, point := range points {
-		builder.WriteString(fmt.Sprintf("%e,%e ", point.X, point.Y))
+	if len(points) < 2 {
+		return svg
 	}
 
-	svg.updateStyle()
-	svg.brackets.Add("polyline", br.Attributes{
-		"points":        builder.String(),
-		"vector-effect": "non-scaling-stroke",
-	})
-	return svg
+	var path strings.Builder
+	first := points[0]
+	path.WriteString(fmt.Sprintf("M%s,%s ", ftos(first.X), ftos(first.Y)))
+
+	for _, p := range points[1:] {
+		path.WriteString(fmt.Sprintf("L%s,%s ", ftos(p.X), ftos(p.Y)))
+	}
+	return svg.Path(path.String())
 }
 
 // Rect adds a rect defined by x, y, width and height
@@ -195,7 +240,8 @@ func (svg *SVG) Transform(transforms ...Transform) *SVG {
 		builder.WriteString(t.function)
 		builder.WriteRune('(')
 		for _, a := range t.arguments {
-			builder.WriteString(fmt.Sprintf("%e ", a))
+			builder.WriteString(ftos(a))
+			builder.WriteRune(' ')
 		}
 		builder.WriteRune(')')
 	}
@@ -294,5 +340,8 @@ func (svg *SVG) Alignment(horizontal HAlignment, vertical VAlignment) *SVG {
 /// Utilities
 
 func ftos(value float64) string {
+	if float64(int(value)) == value {
+		return strconv.Itoa(int(value))
+	}
 	return fmt.Sprintf("%e", value)
 }

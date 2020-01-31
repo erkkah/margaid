@@ -44,6 +44,14 @@ func (am Attributes) String() string {
 	return strings.Join(attributes, " ")
 }
 
+// Size calculates the total size in bytes of all keys + values
+func (am Attributes) Size() (size int) {
+	for k, v := range am {
+		size += len([]byte(k)) + len([]byte(v))
+	}
+	return
+}
+
 type elementKind int
 
 const (
@@ -53,14 +61,15 @@ const (
 	textKind
 )
 
-type element struct {
+// Element represents an xml element
+type Element struct {
 	name        string
 	attributes  Attributes
 	hasChildren bool
 	kind        elementKind
 }
 
-func (e *element) String() string {
+func (e *Element) String() string {
 	if e.kind == textKind {
 		return e.name
 	}
@@ -86,18 +95,33 @@ func (e *element) String() string {
 	return builder.String()
 }
 
-func (b *Brackets) topElement() *element {
+// Attributes returns a copy of the element attributes
+func (e *Element) Attributes() Attributes {
+	return e.attributes.Clone()
+}
+
+// Name returns the element name
+func (e *Element) Name() string {
+	return e.name
+}
+
+// SetAttribute resets an attribute to a new value
+func (e *Element) SetAttribute(key, value string) {
+	e.attributes[key] = value
+}
+
+func (b *Brackets) topElement() *Element {
 	if b.elementStack.Len() != 0 {
 		top := b.elementStack.Back()
-		return top.Value.(*element)
+		return top.Value.(*Element)
 	}
 	return nil
 }
 
-func (b *Brackets) popElement() *element {
+func (b *Brackets) popElement() *Element {
 	top := b.elementStack.Back()
 	b.elementStack.Remove(top)
-	return top.Value.(*element)
+	return top.Value.(*Element)
 }
 
 // Open adds a new opening element with optional attributes.
@@ -105,7 +129,7 @@ func (b *Brackets) Open(name string, attrs ...Attributes) *Brackets {
 	if top := b.topElement(); top != nil {
 		top.hasChildren = true
 	}
-	newElement := &element{
+	newElement := &Element{
 		name: name,
 		kind: openingKind,
 	}
@@ -131,7 +155,7 @@ func (b *Brackets) Text(txt string) *Brackets {
 	if top := b.topElement(); top != nil {
 		top.hasChildren = true
 	}
-	newElement := &element{
+	newElement := &Element{
 		name: txt,
 		kind: textKind,
 	}
@@ -146,7 +170,7 @@ func (b *Brackets) Text(txt string) *Brackets {
 func (b *Brackets) Close() *Brackets {
 	top := b.popElement()
 	if top.hasChildren {
-		b.elements.PushBack(&element{
+		b.elements.PushBack(&Element{
 			name: top.name,
 			kind: closingKind,
 		})
@@ -165,14 +189,20 @@ func (b *Brackets) CloseAll() *Brackets {
 	return b
 }
 
-// Current returns the name of the current element or the
-// empty string if there is none.
-func (b *Brackets) Current() string {
-	top := b.topElement()
-	if top != nil {
-		return top.name
+// Current returns a pointer to the currently open element, or
+// nil if there is none.
+func (b *Brackets) Current() *Element {
+	return b.topElement()
+}
+
+// Last returns a pointer to the most recently added element, or
+// nil if there is none.
+func (b *Brackets) Last() *Element {
+	if b.elements.Len() != 0 {
+		last := b.elements.Back()
+		return last.Value.(*Element)
 	}
-	return ""
+	return nil
 }
 
 // Append adds all elements from another Brackets instance
@@ -185,7 +215,7 @@ func (b *Brackets) String() string {
 	var builder strings.Builder
 
 	for e := b.elements.Front(); e != nil; e = e.Next() {
-		builder.WriteString(e.Value.(*element).String())
+		builder.WriteString(e.Value.(*Element).String())
 	}
 
 	return builder.String()

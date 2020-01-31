@@ -25,7 +25,7 @@ const (
 // Ticker provides tick marks and labels for axes
 type Ticker interface {
 	label(value float64) string
-	start(axis Axis, valueRange float64, steps int) (float64, int)
+	start(axis Axis, valueRange float64, steps int) float64
 	next(previous float64) float64
 }
 
@@ -44,14 +44,14 @@ func (t *timeTicker) label(value float64) string {
 	return TimeFromSeconds(value).Format(t.format)
 }
 
-func (t *timeTicker) start(axis Axis, valueRange float64, steps int) (float64, int) {
+func (t *timeTicker) start(axis Axis, valueRange float64, steps int) float64 {
 	scaleDuration := TimeFromSeconds(valueRange).Sub(time.Unix(0, 0))
 
 	t.step = math.Pow(10.0, math.Trunc(math.Log10(scaleDuration.Seconds()/float64(steps))))
 	for int(valueRange/t.step) > steps {
 		t.step *= 2
 	}
-	return t.step, 1
+	return t.step
 }
 
 func (t *timeTicker) next(previous float64) float64 {
@@ -83,7 +83,7 @@ func (t *valueTicker) label(value float64) string {
 	return strconv.FormatFloat(value, t.style, t.precision, 64)
 }
 
-func (t *valueTicker) start(axis Axis, valueRange float64, steps int) (float64, int) {
+func (t *valueTicker) start(axis Axis, valueRange float64, steps int) float64 {
 	projection := t.m.projections[axis]
 
 	startValue := 0.0
@@ -97,14 +97,14 @@ func (t *valueTicker) start(axis Axis, valueRange float64, steps int) (float64, 
 			t.step *= 2
 		}
 		startValue = t.step
-		return startValue, 1
+		return startValue
 	}
 
 	roundedLog := math.Ceil((math.Log(valueRange) / math.Log(floatBase)) / float64(steps))
 	t.scale = math.Pow(floatBase, math.Max(1, roundedLog))
 	t.step = 0
 	startValue = math.Pow(floatBase, roundedLog-1)
-	return startValue, t.base - 1
+	return startValue
 }
 
 func (t *valueTicker) next(previous float64) float64 {
@@ -172,7 +172,7 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool) {
 
 	const tickDistance = 75
 	steps := axisLength / tickDistance
-	step, _ := ticker.start(axis, max-min, int(steps))
+	step := ticker.start(axis, max-min, int(steps))
 
 	tick := min
 	if math.Mod(tick, step) != 0 {

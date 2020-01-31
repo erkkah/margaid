@@ -1,6 +1,8 @@
 package margaid
 
-import "github.com/erkkah/margaid/svg"
+import (
+	"github.com/erkkah/margaid/svg"
+)
 
 // AxisSelection specified which axes to use
 type AxisSelection struct {
@@ -26,7 +28,7 @@ func (m *Margaid) Line(series *Series, axes ...AxisSelection) {
 	}
 
 	id := m.addPlot(series.title)
-	color := getPlotColor(id)
+	color := m.getPlotColor(id)
 	m.g.StrokeWidth("3px").Fill("none").Stroke(color)
 
 	m.g.Transform(
