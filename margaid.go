@@ -101,17 +101,15 @@ func WithRange(axis Axis, min, max float64) Option {
 func WithAutorange(axis Axis, series *Series) Option {
 	return func(m *Margaid) {
 		if axis == X1Axis || axis == X2Axis {
-			padding := (series.MaxX() - series.MinX()) / float64(series.Size())
-			padding /= 2
 			m.ranges[axis] = minmax{
-				series.MinX() - padding,
-				series.MaxX() + padding,
+				series.MinX(),
+				series.MaxX(),
 			}
 		}
 		if axis == Y1Axis || axis == Y2Axis {
 			m.ranges[axis] = minmax{
 				series.MinY(),
-				series.MaxY() + (series.MaxY()-series.MinY())/20,
+				series.MaxY(),
 			}
 		}
 	}
@@ -197,16 +195,6 @@ func (m *Margaid) project(value float64, axis Axis) (float64, error) {
 	projected := value
 	projection := m.projections[axis]
 
-	if projection == Log {
-		if min < 0 || value < 0 {
-			return 0, fmt.Errorf("Cannot draw values <= 0 on log scale")
-		}
-
-		projected = math.Log10(projected)
-		min = math.Log10(min)
-		max = math.Log10(max)
-	}
-
 	var axisLength float64
 	switch {
 	case axis == X1Axis || axis == X2Axis:
@@ -214,7 +202,25 @@ func (m *Margaid) project(value float64, axis Axis) (float64, error) {
 	case axis == Y1Axis || axis == Y2Axis:
 		axisLength = m.height - 2*m.inset
 	}
-	projected = axisLength * (projected - min) / (max - min)
+
+	axisPadding := axisLength / 25
+
+	if projection == Log {
+		if value <= 0 {
+			return 0, fmt.Errorf("Cannot draw values <= 0 on log scale")
+		}
+
+		if min <= 0 || max <= 0 {
+			return 0, fmt.Errorf("Cannot have axis range <= 0 on log scale")
+		}
+
+		projected = math.Log10(value)
+
+		min = math.Log10(min)
+		max = math.Log10(max)
+	}
+
+	projected = axisPadding + (axisLength-2*axisPadding)*(projected-min)/(max-min)
 	return projected, nil
 }
 

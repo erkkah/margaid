@@ -26,17 +26,18 @@ const (
 // Ticker provides tick marks and labels for axes
 type Ticker interface {
 	label(value float64) string
-	start(axis Axis, valueRange float64, steps int) float64
+	start(axis Axis, steps int) float64
 	next(previous float64) float64
 }
 
 // TimeTicker returns time valued tick labels in the specified time format.
 // TimeTicker assumes that time is linear.
-func TimeTicker(format string) Ticker {
-	return &timeTicker{format, 1}
+func (m *Margaid) TimeTicker(format string) Ticker {
+	return &timeTicker{m, format, 1}
 }
 
 type timeTicker struct {
+	m      *Margaid
 	format string
 	step   float64
 }
@@ -45,11 +46,13 @@ func (t *timeTicker) label(value float64) string {
 	return TimeFromSeconds(value).Format(t.format)
 }
 
-func (t *timeTicker) start(axis Axis, valueRange float64, steps int) float64 {
-	scaleDuration := TimeFromSeconds(valueRange).Sub(time.Unix(0, 0))
+func (t *timeTicker) start(axis Axis, steps int) float64 {
+	minmax := t.m.ranges[axis]
+	scaleRange := minmax.max - minmax.min
+	scaleDuration := TimeFromSeconds(scaleRange).Sub(time.Unix(0, 0))
 
 	t.step = math.Pow(10.0, math.Trunc(math.Log10(scaleDuration.Seconds()/float64(steps))))
-	for int(valueRange/t.step) > steps {
+	for int(scaleRange/t.step) > steps {
 		t.step *= 2
 	}
 	return t.step
@@ -84,27 +87,32 @@ func (t *valueTicker) label(value float64) string {
 	return strconv.FormatFloat(value, t.style, t.precision, 64)
 }
 
-func (t *valueTicker) start(axis Axis, valueRange float64, steps int) float64 {
+func (t *valueTicker) start(axis Axis, steps int) float64 {
 	projection := t.m.projections[axis]
+	minmax := t.m.ranges[axis]
+	scaleRange := minmax.max - minmax.min
 
 	startValue := 0.0
 	floatBase := float64(t.base)
 
 	if projection == Lin {
-		truncatedLog := math.Trunc(math.Log(valueRange/float64(steps)) / math.Log(floatBase))
-		t.step = math.Pow(floatBase, truncatedLog)
+		roundedLog := math.Round(math.Log(scaleRange/float64(steps)) / math.Log(floatBase))
+		t.step = math.Pow(floatBase, roundedLog)
 
-		for int(valueRange/t.step) > steps {
+		for int(scaleRange/t.step) > steps {
 			t.step *= 2
 		}
 		startValue = t.step
 		return startValue
 	}
 
-	roundedLog := math.Ceil((math.Log(valueRange) / math.Log(floatBase)) / float64(steps))
+	roundedLog := math.Round((math.Log(scaleRange) / math.Log(floatBase)) / float64(steps))
 	t.scale = math.Pow(floatBase, math.Max(1, roundedLog))
 	t.step = 0
-	startValue = math.Pow(floatBase, roundedLog-1)
+	startValue = math.Pow(floatBase, math.Round(math.Log(minmax.min)/math.Log(floatBase)))
+	for startValue < minmax.min {
+		startValue = t.next(startValue)
+	}
 	return startValue
 }
 
@@ -114,15 +122,21 @@ func (t *valueTicker) next(previous float64) float64 {
 	}
 
 	floatBase := float64(t.base)
-	truncatedLog := math.Trunc(math.Log(previous) / math.Log(floatBase))
-	next := previous + math.Pow(floatBase, truncatedLog)
+	log := math.Log(previous) / math.Log(floatBase)
+	if log < 0 {
+		log = -math.Ceil(-log)
+	} else {
+		log = math.Floor(log)
+	}
+	increment := math.Pow(floatBase, log)
+	next := previous + increment
+	next /= increment
+	next = math.Round(next) * increment
 	return next
 }
 
 // Axis draws tick marks and labels using the specified ticker
 func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool) {
-	var min float64
-	var max float64
 	var xOffset float64 = m.inset
 	var yOffset float64 = m.inset
 	var axisLength float64
@@ -133,9 +147,9 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool) {
 	var vAlignment svg.VAlignment
 	var hAlignment svg.HAlignment
 
+	max := m.ranges[axis].max
+
 	xAttributes := func() {
-		min = series.MinX()
-		max = series.MaxX()
 		axisLength = m.width - 2*m.inset
 		crossLength = m.height - 2*m.inset
 		xMult = 1
@@ -143,8 +157,6 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool) {
 	}
 
 	yAttributes := func() {
-		min = series.MinY()
-		max = series.MaxY()
 		yOffset = m.height - m.inset
 		axisLength = m.height - 2*m.inset
 		crossLength = m.width - 2*m.inset
@@ -173,13 +185,7 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool) {
 
 	const tickDistance = 75
 	steps := axisLength / tickDistance
-	step := ticker.start(axis, max-min, int(steps))
-
-	tick := min
-	if math.Mod(tick, step) != 0 {
-		tick += step
-		tick -= math.Mod(tick, step)
-	}
+	start := ticker.start(axis, int(steps))
 
 	m.g.Transform(
 		svg.Translation(xOffset, yOffset),
@@ -188,15 +194,17 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool) {
 		StrokeWidth("2px").
 		Stroke("black")
 
-	firstTick := tick
+	tick := start
 
 	for tick <= max {
-		// ??? Ignore error :(
-		value, _ := m.project(tick, axis)
-		m.g.Polyline([]struct{ X, Y float64 }{
-			{value * xMult, value * yMult},
-			{value*xMult + tickSign*6*(1-xMult), value*yMult + tickSign*(1-yMult)*6},
-		}...)
+		value, err := m.project(tick, axis)
+
+		if err == nil {
+			m.g.Polyline([]struct{ X, Y float64 }{
+				{value * xMult, value * yMult},
+				{value*xMult + tickSign*6*(1-xMult), value*yMult + tickSign*(1-yMult)*6},
+			}...)
+		}
 
 		tick = ticker.next(tick)
 	}
@@ -209,19 +217,20 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool) {
 		FontStyle(svg.StyleNormal, svg.WeightLighter).
 		Alignment(hAlignment, vAlignment)
 
-	tick = firstTick
+	tick = start
 	lastLabel := -m.inset
 
 	for tick <= max {
-		// ??? Ignore error :(
-		value, _ := m.project(tick, axis)
+		value, err := m.project(tick, axis)
 
-		if value-lastLabel > float64(m.labelSize) {
-			m.g.Text(
-				value*xMult+(tickSign)*10*(1-xMult),
-				-value*yMult+(-tickSign)*10*(1-yMult),
-				ticker.label(tick))
-			lastLabel = value
+		if err == nil {
+			if value-lastLabel > float64(m.labelSize) {
+				m.g.Text(
+					value*xMult+(tickSign)*10*(1-xMult),
+					-value*yMult+(-tickSign)*10*(1-yMult),
+					ticker.label(tick))
+				lastLabel = value
+			}
 		}
 
 		tick = ticker.next(tick)
@@ -233,15 +242,18 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool) {
 			svg.Scaling(1, -1),
 		).
 			StrokeWidth("0.5px").Stroke("gray")
-		tick = firstTick
 
-		for tick < max {
-			// ??? Ignore error :(
-			value, _ := m.project(tick, axis)
-			m.g.Polyline([]struct{ X, Y float64 }{
-				{value * xMult, value * yMult},
-				{value*xMult - tickSign*crossLength*(1-xMult), value*yMult - tickSign*(1-yMult)*crossLength},
-			}...)
+		tick = start
+
+		for tick <= max {
+			value, err := m.project(tick, axis)
+
+			if err == nil {
+				m.g.Polyline([]struct{ X, Y float64 }{
+					{value * xMult, value * yMult},
+					{value*xMult - tickSign*crossLength*(1-xMult), value*yMult - tickSign*(1-yMult)*crossLength},
+				}...)
+			}
 
 			tick = ticker.next(tick)
 		}
