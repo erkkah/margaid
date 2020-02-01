@@ -35,7 +35,79 @@ func New(width int, height int) *SVG {
 		"preserveAspectRatio": "xMidYMid meet",
 		"xmlns":               "http://www.w3.org/2000/svg",
 	})
+	self.addMarkers()
 	return &self
+}
+
+func (svg *SVG) addMarkers() {
+	svg.brackets.Open("defs").
+		Open("marker", br.Attributes{
+			"id":           "circle",
+			"viewBox":      "0 0 10 10 ",
+			"refX":         "5",
+			"refY":         "5",
+			"markerWidth":  "5",
+			"markerHeight": "5",
+		}).
+		Add("circle", br.Attributes{
+			"cx":     "5",
+			"cy":     "5",
+			"r":      "3",
+			"fill":   "none",
+			"stroke": "black",
+		}).
+		Close().
+		Open("marker", br.Attributes{
+			"id":           "filled-circle",
+			"viewBox":      "0 0 10 10 ",
+			"refX":         "5",
+			"refY":         "5",
+			"markerWidth":  "5",
+			"markerHeight": "5",
+		}).
+		Add("circle", br.Attributes{
+			"cx":     "5",
+			"cy":     "5",
+			"r":      "3",
+			"fill":   "black",
+			"stroke": "none",
+		}).
+		Close().
+		Open("marker", br.Attributes{
+			"id":           "square",
+			"viewBox":      "0 0 10 10 ",
+			"refX":         "5",
+			"refY":         "5",
+			"markerWidth":  "5",
+			"markerHeight": "5",
+		}).
+		Add("rect", br.Attributes{
+			"x":      "1",
+			"y":      "1",
+			"width":  "8",
+			"height": "8",
+			"fill":   "none",
+			"stroke": "black",
+		}).
+		Close().
+		Open("marker", br.Attributes{
+			"id":           "filled-square",
+			"viewBox":      "0 0 10 10 ",
+			"refX":         "5",
+			"refY":         "5",
+			"markerWidth":  "5",
+			"markerHeight": "5",
+		}).
+		Add("rect", br.Attributes{
+			"x":      "1",
+			"y":      "1",
+			"width":  "8",
+			"height": "8",
+			"fill":   "black",
+			"stroke": "none",
+		}).
+		Close().
+		Close()
 }
 
 func makeSVG() SVG {
@@ -131,7 +203,11 @@ func (svg *SVG) updateStyle() {
 
 func (svg *SVG) setAttribute(attr string, value string) {
 	if svg.attributes[attr] != value {
-		svg.attributes[attr] = value
+		if value == "" {
+			delete(svg.attributes, attr)
+		} else {
+			svg.attributes[attr] = value
+		}
 		svg.styleInSync = false
 	}
 }
@@ -274,6 +350,20 @@ func (svg *SVG) Color(color string) *SVG {
 // StrokeWidth sets current stroke width
 func (svg *SVG) StrokeWidth(width string) *SVG {
 	svg.setAttribute("stroke-width", width)
+	return svg
+}
+
+// Marker adds start, mid and end markers to all following strokes.
+// The specified marker has to be one of "circle" and "square".
+// Setting the marker to the empty string clears the marker.
+func (svg *SVG) Marker(marker string) *SVG {
+	reference := ""
+	if marker != "" {
+		reference = fmt.Sprintf("url(#%s)", marker)
+	}
+	svg.setAttribute("marker-start", reference)
+	svg.setAttribute("marker-mid", reference)
+	svg.setAttribute("marker-end", reference)
 	return svg
 }
 
