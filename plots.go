@@ -91,7 +91,7 @@ func (m *Margaid) Smooth(series *Series, using ...Using) {
 	id := m.addPlot(series.title)
 	color := m.getPlotColor(id)
 	m.g.
-		StrokeWidth("3px").
+		StrokeWidth("4").
 		Fill("none").
 		Stroke(color).
 		Marker(options.marker).
@@ -115,33 +115,49 @@ func (m *Margaid) Smooth(series *Series, using ...Using) {
 	m.g.Path(path.String()).Marker("").Transform()
 }
 
-// Bar draws bars for the specified series
-func (m *Margaid) Bar(series *Series, using ...Using) {
-	options := getPlotOptions(using)
-
-	points, err := m.getProjectedValues(series, options.xAxis, options.yAxis)
-	if err != nil {
-		m.error(err.Error())
+// Bar draws bars for the specified group of series.
+func (m *Margaid) Bar(series []*Series, using ...Using) {
+	if len(series) == 0 {
 		return
 	}
 
-	id := m.addPlot(series.title)
-	color := m.getPlotColor(id)
-	m.g.
-		StrokeWidth("1px").
-		Fill(color).
-		Stroke(color).
-		Transform(
-			svg.Translation(m.inset, m.height-m.inset),
-			svg.Scaling(1, -1),
-		)
+	options := getPlotOptions(using)
 
-	barWidth := (m.width - 2*m.inset) / float64(len(points))
-	barWidth /= 2
-
-	for _, p := range points {
-		m.g.Rect(p.X-barWidth/2, 0, barWidth, p.Y)
+	maxSize := 0
+	for _, s := range series {
+		if s.Size() > maxSize {
+			maxSize = s.Size()
+		}
 	}
+
+	barWidth := (m.width - 2*m.inset) / float64(maxSize)
+	barWidth /= 1.5
+	barWidth /= float64(len(series))
+	barOffset := -(barWidth / 2) * float64(len(series)-1)
+
+	for i, s := range series {
+		points, err := m.getProjectedValues(s, options.xAxis, options.yAxis)
+
+		if err != nil {
+			m.error(err.Error())
+			return
+		}
+		id := m.addPlot(s.title)
+		color := m.getPlotColor(id)
+		m.g.
+			StrokeWidth("1px").
+			Fill(color).
+			Stroke(color).
+			Transform(
+				svg.Translation(m.inset, m.height-m.inset),
+				svg.Scaling(1, -1),
+			)
+
+		for _, p := range points {
+			m.g.Rect(barOffset+float64(i)*barWidth+p.X-barWidth/2, 0, barWidth, p.Y)
+		}
+	}
+
 }
 
 // BezierPoint is one Bezier curve control point

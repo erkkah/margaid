@@ -46,8 +46,9 @@ func (svg *SVG) addMarkers() {
 			"viewBox":      "0 0 10 10 ",
 			"refX":         "5",
 			"refY":         "5",
-			"markerWidth":  "5",
-			"markerHeight": "5",
+			"markerUnits":  "userSpaceOnUse",
+			"markerWidth":  "2%",
+			"markerHeight": "2%",
 		}).
 		Add("circle", br.Attributes{
 			"cx":     "5",
@@ -62,8 +63,9 @@ func (svg *SVG) addMarkers() {
 			"viewBox":      "0 0 10 10 ",
 			"refX":         "5",
 			"refY":         "5",
-			"markerWidth":  "5",
-			"markerHeight": "5",
+			"markerUnits":  "userSpaceOnUse",
+			"markerWidth":  "2%",
+			"markerHeight": "2%",
 		}).
 		Add("circle", br.Attributes{
 			"cx":     "5",
@@ -78,14 +80,15 @@ func (svg *SVG) addMarkers() {
 			"viewBox":      "0 0 10 10 ",
 			"refX":         "5",
 			"refY":         "5",
-			"markerWidth":  "5",
-			"markerHeight": "5",
+			"markerUnits":  "userSpaceOnUse",
+			"markerWidth":  "2%",
+			"markerHeight": "2%",
 		}).
 		Add("rect", br.Attributes{
-			"x":      "1",
-			"y":      "1",
-			"width":  "8",
-			"height": "8",
+			"x":      "2",
+			"y":      "2",
+			"width":  "6",
+			"height": "6",
 			"fill":   "none",
 			"stroke": "black",
 		}).
@@ -95,14 +98,15 @@ func (svg *SVG) addMarkers() {
 			"viewBox":      "0 0 10 10 ",
 			"refX":         "5",
 			"refY":         "5",
-			"markerWidth":  "5",
-			"markerHeight": "5",
+			"markerUnits":  "userSpaceOnUse",
+			"markerWidth":  "2%",
+			"markerHeight": "2%",
 		}).
 		Add("rect", br.Attributes{
-			"x":      "1",
-			"y":      "1",
-			"width":  "8",
-			"height": "8",
+			"x":      "2",
+			"y":      "2",
+			"width":  "6",
+			"height": "6",
 			"fill":   "black",
 			"stroke": "none",
 		}).

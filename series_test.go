@@ -30,7 +30,7 @@ func TestCapByTime(t *testing.T) {
 	}
 	s := NewSeries(CappedByAge(5*time.Millisecond, reference))
 	for i := 0; i < 10; i++ {
-		s.Add(ValueAtTime(float64(i), now.Add(-2*time.Duration(10-i)*time.Millisecond)))
+		s.Add(MakeValue(SecondsFromTime(now.Add(-2*time.Duration(10-i)*time.Millisecond)), float64(i)))
 	}
 	if s.Size() != 2 {
 		t.Fail()
@@ -42,10 +42,10 @@ func TestMinMax(t *testing.T) {
 	s.Add(MakeValue(0, 1))
 	s.Add(MakeValue(1000, 2))
 	s.Add(MakeValue(-10, 3))
-	if s.Min() != -10 {
+	if s.MinX() != -10 {
 		t.Fail()
 	}
-	if s.Max() != 1000 {
+	if s.MaxX() != 1000 {
 		t.Fail()
 	}
 }

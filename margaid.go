@@ -22,6 +22,11 @@ type Margaid struct {
 
 	plots       []string
 	colorScheme int
+
+	titleFamily string
+	titleSize   int
+	labelFamily string
+	labelSize   int
 }
 
 // minmax is the range [min, max] of a chart axis
@@ -56,6 +61,10 @@ func New(width, height int, options ...Option) *Margaid {
 		},
 
 		colorScheme: 198,
+		titleFamily: "sans-serif",
+		titleSize:   18,
+		labelFamily: "sans-serif",
+		labelSize:   12,
 	}
 
 	for _, o := range options {
@@ -124,10 +133,26 @@ func WithColorScheme(scheme int) Option {
 	}
 }
 
+// WithTitleFont sets title font family and size in pixels
+func WithTitleFont(family string, size int) Option {
+	return func(m *Margaid) {
+		m.titleFamily = family
+		m.titleSize = size
+	}
+}
+
+// WithLabelFont sets label font family and size in pixels
+func WithLabelFont(family string, size int) Option {
+	return func(m *Margaid) {
+		m.labelFamily = family
+		m.labelSize = size
+	}
+}
+
 // Title draws a title top center
 func (m *Margaid) Title(title string) {
 	m.g.
-		Font("sans-serif", "12pt").
+		Font(m.titleFamily, fmt.Sprintf("%dpx", m.titleSize)).
 		FontStyle(svg.StyleNormal, svg.WeightBold).
 		Alignment(svg.HAlignMiddle, svg.VAlignCentral).
 		Transform().
@@ -141,7 +166,7 @@ func (m *Margaid) Legend(series []string) {
 
 func (m *Margaid) error(message string) {
 	m.g.
-		Font("sans-serif", "10pt").
+		Font(m.titleFamily, fmt.Sprintf("%dpx", m.titleSize)).
 		FontStyle(svg.StyleItalic, svg.WeightBold).
 		Alignment(svg.HAlignStart, svg.VAlignCentral).
 		Transform().

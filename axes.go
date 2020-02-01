@@ -1,6 +1,7 @@
 package margaid
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 	"time"
@@ -204,19 +205,18 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool) {
 		svg.Translation(xOffset, yOffset),
 		svg.Scaling(1, 1),
 	).
-		Font("sans-serif", "10pt").
+		Font(m.labelFamily, fmt.Sprintf("%dpx", m.labelSize)).
 		FontStyle(svg.StyleNormal, svg.WeightLighter).
 		Alignment(hAlignment, vAlignment)
 
 	tick = firstTick
 	lastLabel := -m.inset
-	const labelThreshold = 10.0
 
 	for tick <= max {
 		// ??? Ignore error :(
 		value, _ := m.project(tick, axis)
 
-		if value-lastLabel > labelThreshold {
+		if value-lastLabel > float64(m.labelSize) {
 			m.g.Text(
 				value*xMult+(tickSign)*10*(1-xMult),
 				-value*yMult+(-tickSign)*10*(1-yMult),
