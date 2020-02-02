@@ -284,8 +284,7 @@ func (svg *SVG) Text(x, y float64, txt string) *SVG {
 
 /// Transformations
 
-// Rotation rotates by angle degrees counter-clockwise
-// around (x, y)
+// Rotation rotates by angle degrees clockwise around (x, y)
 func Rotation(angle, x, y float64) Transform {
 	return Transform{
 		"rotate",
