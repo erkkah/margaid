@@ -438,3 +438,38 @@ func ftos(value float64) string {
 	}
 	return fmt.Sprintf("%e", value)
 }
+
+// EncodeText applies proper xml escaping and svg line breaking
+// at each newline in the raw text and returns a section ready
+// for inclusion in a <text> element.
+// NOTE: Line breaking is kind of hacky, since we cannot actually
+// measure text in SVG, and assume that all characters are 1ex wide.
+func EncodeText(raw string, alignment HAlignment) string {
+	chunks := strings.Split(raw, "\n")
+	if len(chunks) > 1 {
+		var lines strings.Builder
+
+		lines.WriteString(br.XMLEscape(chunks[0]))
+		previousLength := float64(len(chunks[0]))
+
+		for _, chunk := range chunks[1:] {
+			chunk = br.XMLEscape(chunk)
+			currentLength := float64(len(chunk))
+
+			carriageReturn := 0.0
+			switch alignment {
+			case HAlignStart:
+				carriageReturn = previousLength
+			case HAlignMiddle:
+				carriageReturn = (previousLength + currentLength) / 2
+			case HAlignEnd:
+				carriageReturn = currentLength
+			}
+
+			lines.WriteString(fmt.Sprintf(`<tspan dx="-%fex" dy="1em">%s</tspan>`, carriageReturn, chunk))
+			previousLength = float64(len(chunk))
+		}
+		return lines.String()
+	}
+	return br.XMLEscape(raw)
+}

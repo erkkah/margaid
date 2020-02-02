@@ -171,13 +171,14 @@ func WithLabelFont(family string, size int) Option {
 
 // Title draws a title top center
 func (m *Margaid) Title(title string) {
+	encoded := svg.EncodeText(title, svg.HAlignMiddle)
 	m.g.
 		Font(m.titleFamily, fmt.Sprintf("%dpx", m.titleSize)).
 		FontStyle(svg.StyleNormal, svg.WeightBold).
 		Alignment(svg.HAlignMiddle, svg.VAlignCentral).
 		Transform().
 		Fill("black").
-		Text(m.width/2, m.inset/2, title)
+		Text(m.width/2, m.inset/2, encoded)
 }
 
 // LegendPosition decides where to draw the legend
@@ -242,9 +243,8 @@ func (m *Margaid) Legend(position LegendPosition) {
 		style(plot.color)
 		m.g.Rect(xPos, yPos, boxSize, boxSize)
 		style("black")
-		m.g.Text(xPos+boxSize+textSpacing, yPos, plot.name)
+		m.g.Text(xPos+boxSize+textSpacing, yPos, brackets.XMLEscape(plot.name))
 	}
-
 }
 
 func (m *Margaid) error(message string) {

@@ -2,9 +2,6 @@ package margaid
 
 import (
 	"fmt"
-	"math"
-	"strconv"
-	"time"
 
 	"github.com/erkkah/margaid/svg"
 )
@@ -22,115 +19,6 @@ const (
 	X1Axis = XAxis
 	Y1Axis = YAxis
 )
-
-// Ticker provides tick marks and labels for axes
-type Ticker interface {
-	label(value float64) string
-	start(axis Axis, steps int) float64
-	next(previous float64) float64
-}
-
-// TimeTicker returns time valued tick labels in the specified time format.
-// TimeTicker assumes that time is linear.
-func (m *Margaid) TimeTicker(format string) Ticker {
-	return &timeTicker{m, format, 1}
-}
-
-type timeTicker struct {
-	m      *Margaid
-	format string
-	step   float64
-}
-
-func (t *timeTicker) label(value float64) string {
-	return TimeFromSeconds(value).Format(t.format)
-}
-
-func (t *timeTicker) start(axis Axis, steps int) float64 {
-	minmax := t.m.ranges[axis]
-	scaleRange := minmax.max - minmax.min
-	scaleDuration := TimeFromSeconds(scaleRange).Sub(time.Unix(0, 0))
-
-	t.step = math.Pow(10.0, math.Trunc(math.Log10(scaleDuration.Seconds()/float64(steps))))
-	for int(scaleRange/t.step) > steps {
-		t.step *= 2
-	}
-	return t.step
-}
-
-func (t *timeTicker) next(previous float64) float64 {
-	return previous + t.step
-}
-
-// ValueTicker returns tick labels by converting floats using strconv.FormatFloat
-func (m *Margaid) ValueTicker(style byte, precision int, base int) Ticker {
-	return &valueTicker{
-		m:         m,
-		step:      1,
-		style:     style,
-		precision: precision,
-		base:      base,
-	}
-}
-
-type valueTicker struct {
-	m          *Margaid
-	projection Projection
-	step       float64
-	style      byte
-	precision  int
-	base       int
-}
-
-func (t *valueTicker) label(value float64) string {
-	return strconv.FormatFloat(value, t.style, t.precision, 64)
-}
-
-func (t *valueTicker) start(axis Axis, steps int) float64 {
-	t.projection = t.m.projections[axis]
-	minmax := t.m.ranges[axis]
-	scaleRange := minmax.max - minmax.min
-
-	startValue := 0.0
-	floatBase := float64(t.base)
-
-	if t.projection == Lin {
-		roundedLog := math.Round(math.Log(scaleRange/float64(steps)) / math.Log(floatBase))
-		t.step = math.Pow(floatBase, roundedLog)
-
-		for int(scaleRange/t.step) > steps {
-			t.step *= 2
-		}
-		startValue = t.step
-		return startValue
-	}
-
-	t.step = 0
-	startValue = math.Pow(floatBase, math.Round(math.Log(minmax.min)/math.Log(floatBase)))
-	for startValue < minmax.min {
-		startValue = t.next(startValue)
-	}
-	return startValue
-}
-
-func (t *valueTicker) next(previous float64) float64 {
-	if t.projection == Lin {
-		return previous + t.step
-	}
-
-	floatBase := float64(t.base)
-	log := math.Log(previous) / math.Log(floatBase)
-	if log < 0 {
-		log = -math.Ceil(-log)
-	} else {
-		log = math.Floor(log)
-	}
-	increment := math.Pow(floatBase, log)
-	next := previous + increment
-	next /= increment
-	next = math.Round(next) * increment
-	return next
-}
 
 // Axis draws tick marks and labels using the specified ticker
 func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool, title string) {
@@ -191,7 +79,7 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool, titl
 	}
 
 	steps := axisLength / tickDistance
-	start := ticker.start(axis, int(steps))
+	start := ticker.start(axis, series, int(steps))
 
 	m.g.Transform(
 		svg.Translation(xOffset, yOffset),
@@ -200,9 +88,10 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool, titl
 		StrokeWidth("2px").
 		Stroke("black")
 
-	tick := start
+	var tick float64
+	var hasMore = true
 
-	for tick <= max {
+	for tick = start; tick <= max && hasMore; tick, hasMore = ticker.next(tick) {
 		value, err := m.project(tick, axis)
 
 		if err == nil {
@@ -211,8 +100,6 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool, titl
 				{value*xMult + tickSign*tickSize*(yMult), value*yMult + tickSign*(xMult)*tickSize},
 			}...)
 		}
-
-		tick = ticker.next(tick)
 	}
 
 	m.g.Transform(
@@ -224,11 +111,11 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool, titl
 		Alignment(hAlignment, vAlignment).
 		Fill("black")
 
-	tick = start
 	lastLabel := -m.inset
 	textOffset := float64(tickSize + textSpacing)
+	hasMore = true
 
-	for tick <= max {
+	for tick = start; tick <= max && hasMore; tick, hasMore = ticker.next(tick) {
 		value, err := m.project(tick, axis)
 
 		if err == nil {
@@ -240,8 +127,6 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool, titl
 				lastLabel = value
 			}
 		}
-
-		tick = ticker.next(tick)
 	}
 
 	if title != "" {
@@ -269,9 +154,9 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool, titl
 		).
 			StrokeWidth("0.5px").Stroke("gray")
 
-		tick = start
+		hasMore = true
 
-		for tick <= max {
+		for tick = start; tick <= max && hasMore; tick, hasMore = ticker.next(tick) {
 			value, err := m.project(tick, axis)
 
 			if err == nil {
@@ -280,8 +165,6 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool, titl
 					{value*xMult - tickSign*crossLength*(yMult), value*yMult - tickSign*(xMult)*crossLength},
 				}...)
 			}
-
-			tick = ticker.next(tick)
 		}
 	}
 }
