@@ -29,6 +29,12 @@ type Margaid struct {
 	labelSize   int
 }
 
+const (
+	tickDistance = 55
+	tickSize     = 6
+	textSpacing  = 4
+)
+
 // minmax is the range [min, max] of a chart axis
 type minmax struct{ min, max float64 }
 
@@ -158,8 +164,71 @@ func (m *Margaid) Title(title string) {
 		Text(m.width/2, m.inset/2, title)
 }
 
-// Legend draws a legend box for the specified set of series
-func (m *Margaid) Legend(series []string) {
+// LegendPosition decides where to draw the legend
+type LegendPosition int
+
+// LegendPosition constants
+const (
+	RightTop LegendPosition = iota + 'l'
+	RightBottom
+	BottomLeft
+)
+
+// Legend draws a legend for named plots
+func (m *Margaid) Legend(position LegendPosition) {
+	type namedPlot struct {
+		name  string
+		color string
+	}
+
+	var plots []namedPlot
+
+	for i, label := range m.plots {
+		if label != "" {
+			color := m.getPlotColor(i)
+			plots = append(plots, namedPlot{
+				name:  label,
+				color: color,
+			})
+		}
+	}
+
+	boxSize := float64(m.labelSize)
+	lineHeight := float64(m.labelSize) * 1.5
+
+	listStartX := 0.0
+	listStartY := 0.0
+
+	switch position {
+	case RightTop:
+		listStartX = m.width - m.inset + boxSize + textSpacing
+		listStartY = m.inset
+	case RightBottom:
+		listStartX = m.width - m.inset + boxSize + textSpacing
+		listStartY = m.height - m.inset - lineHeight*float64(len(plots))
+	case BottomLeft:
+		listStartX = m.inset
+		listStartY = m.height - m.inset + lineHeight + boxSize + tickSize
+	}
+
+	style := func(color string) {
+		m.g.
+			Font(m.labelFamily, fmt.Sprintf("%dpx", m.labelSize)).
+			FontStyle(svg.StyleItalic, svg.WeightNormal).
+			Alignment(svg.HAlignStart, svg.VAlignTop).
+			Fill(color)
+	}
+
+	for i, plot := range plots {
+		floatIndex := float64(i)
+		yPos := listStartY + floatIndex*lineHeight
+		xPos := listStartX
+		style(plot.color)
+		m.g.Rect(xPos, yPos, boxSize, boxSize)
+		style("black")
+		m.g.Text(xPos+boxSize+textSpacing, yPos, plot.name)
+	}
+
 }
 
 func (m *Margaid) error(message string) {

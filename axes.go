@@ -180,7 +180,6 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool) {
 		hAlignment = svg.HAlignStart
 	}
 
-	const tickDistance = 55
 	steps := axisLength / tickDistance
 	start := ticker.start(axis, int(steps))
 
@@ -199,7 +198,7 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool) {
 		if err == nil {
 			m.g.Polyline([]struct{ X, Y float64 }{
 				{value * xMult, value * yMult},
-				{value*xMult + tickSign*6*(1-xMult), value*yMult + tickSign*(1-yMult)*6},
+				{value*xMult + tickSign*tickSize*(1-xMult), value*yMult + tickSign*(1-yMult)*tickSize},
 			}...)
 		}
 
@@ -217,6 +216,7 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool) {
 
 	tick = start
 	lastLabel := -m.inset
+	textOffset := float64(tickSize + textSpacing)
 
 	for tick <= max {
 		value, err := m.project(tick, axis)
@@ -224,8 +224,8 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool) {
 		if err == nil {
 			if value-lastLabel > float64(m.labelSize) {
 				m.g.Text(
-					value*xMult+(tickSign)*10*(1-xMult),
-					-value*yMult+(-tickSign)*10*(1-yMult),
+					value*xMult+(tickSign)*textOffset*(1-xMult),
+					-value*yMult+(-tickSign)*textOffset*(1-yMult),
 					ticker.label(tick))
 				lastLabel = value
 			}
