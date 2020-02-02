@@ -80,6 +80,8 @@ func New(width, height int, options ...Option) *Margaid {
 	return self
 }
 
+/// Options
+
 // Projection is the type for the projection constants
 type Projection int
 
@@ -153,6 +155,8 @@ func WithLabelFont(family string, size int) Option {
 	}
 }
 
+/// Drawing
+
 // Title draws a title top center
 func (m *Margaid) Title(title string) {
 	m.g.
@@ -202,19 +206,19 @@ func (m *Margaid) Legend(position LegendPosition) {
 	switch position {
 	case RightTop:
 		listStartX = m.width - m.inset + boxSize + textSpacing
-		listStartY = m.inset
+		listStartY = m.inset + 0.5*boxSize
 	case RightBottom:
 		listStartX = m.width - m.inset + boxSize + textSpacing
 		listStartY = m.height - m.inset - lineHeight*float64(len(plots))
 	case BottomLeft:
-		listStartX = m.inset
+		listStartX = m.inset + 0.5*boxSize
 		listStartY = m.height - m.inset + lineHeight + boxSize + tickSize
 	}
 
 	style := func(color string) {
 		m.g.
 			Font(m.labelFamily, fmt.Sprintf("%dpx", m.labelSize)).
-			FontStyle(svg.StyleItalic, svg.WeightNormal).
+			FontStyle(svg.StyleNormal, svg.WeightNormal).
 			Alignment(svg.HAlignStart, svg.VAlignTop).
 			Fill(color)
 	}
