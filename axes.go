@@ -67,7 +67,6 @@ func (m *Margaid) ValueTicker(style byte, precision int, base int) Ticker {
 	return &valueTicker{
 		m:         m,
 		step:      1,
-		scale:     1,
 		style:     style,
 		precision: precision,
 		base:      base,
@@ -75,12 +74,12 @@ func (m *Margaid) ValueTicker(style byte, precision int, base int) Ticker {
 }
 
 type valueTicker struct {
-	m         *Margaid
-	step      float64
-	scale     float64
-	style     byte
-	precision int
-	base      int
+	m          *Margaid
+	projection Projection
+	step       float64
+	style      byte
+	precision  int
+	base       int
 }
 
 func (t *valueTicker) label(value float64) string {
@@ -88,14 +87,14 @@ func (t *valueTicker) label(value float64) string {
 }
 
 func (t *valueTicker) start(axis Axis, steps int) float64 {
-	projection := t.m.projections[axis]
+	t.projection = t.m.projections[axis]
 	minmax := t.m.ranges[axis]
 	scaleRange := minmax.max - minmax.min
 
 	startValue := 0.0
 	floatBase := float64(t.base)
 
-	if projection == Lin {
+	if t.projection == Lin {
 		roundedLog := math.Round(math.Log(scaleRange/float64(steps)) / math.Log(floatBase))
 		t.step = math.Pow(floatBase, roundedLog)
 
@@ -106,8 +105,6 @@ func (t *valueTicker) start(axis Axis, steps int) float64 {
 		return startValue
 	}
 
-	roundedLog := math.Round((math.Log(scaleRange) / math.Log(floatBase)) / float64(steps))
-	t.scale = math.Pow(floatBase, math.Max(1, roundedLog))
 	t.step = 0
 	startValue = math.Pow(floatBase, math.Round(math.Log(minmax.min)/math.Log(floatBase)))
 	for startValue < minmax.min {
@@ -117,7 +114,7 @@ func (t *valueTicker) start(axis Axis, steps int) float64 {
 }
 
 func (t *valueTicker) next(previous float64) float64 {
-	if t.step != 0 {
+	if t.projection == Lin {
 		return previous + t.step
 	}
 
@@ -183,7 +180,7 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool) {
 		hAlignment = svg.HAlignStart
 	}
 
-	const tickDistance = 75
+	const tickDistance = 55
 	steps := axisLength / tickDistance
 	start := ticker.start(axis, int(steps))
 
@@ -215,7 +212,8 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool) {
 	).
 		Font(m.labelFamily, fmt.Sprintf("%dpx", m.labelSize)).
 		FontStyle(svg.StyleNormal, svg.WeightLighter).
-		Alignment(hAlignment, vAlignment)
+		Alignment(hAlignment, vAlignment).
+		Fill("black")
 
 	tick = start
 	lastLabel := -m.inset
