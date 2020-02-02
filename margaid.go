@@ -13,9 +13,10 @@ import (
 type Margaid struct {
 	g *svg.SVG
 
-	width  float64
-	height float64
-	inset  float64
+	width   float64
+	height  float64
+	inset   float64
+	padding float64 // padding [0..1]
 
 	projections map[Axis]Projection
 	ranges      map[Axis]minmax
@@ -30,9 +31,11 @@ type Margaid struct {
 }
 
 const (
-	tickDistance = 55
-	tickSize     = 6
-	textSpacing  = 4
+	defaultPadding = 0
+	defaultInset   = 64
+	tickDistance   = 55
+	tickSize       = 6
+	textSpacing    = 4
 )
 
 // minmax is the range [min, max] of a chart axis
@@ -48,9 +51,10 @@ func New(width, height int, options ...Option) *Margaid {
 	self := &Margaid{
 		g: svg.New(width, height),
 
-		inset:  64,
-		width:  float64(width),
-		height: float64(height),
+		inset:   defaultInset,
+		width:   float64(width),
+		height:  float64(height),
+		padding: defaultPadding,
 
 		projections: map[Axis]Projection{
 			X1Axis: Lin,
@@ -128,6 +132,14 @@ func WithAutorange(axis Axis, series *Series) Option {
 func WithInset(inset float64) Option {
 	return func(m *Margaid) {
 		m.inset = inset
+	}
+}
+
+// WithPadding sets the padding inside the plotting area as a factor
+// [0..1] of the area width and height
+func WithPadding(padding float64) Option {
+	return func(m *Margaid) {
+		m.padding = math.Max(0, math.Min(1, padding))
 	}
 }
 
@@ -276,7 +288,7 @@ func (m *Margaid) project(value float64, axis Axis) (float64, error) {
 		axisLength = m.height - 2*m.inset
 	}
 
-	axisPadding := axisLength / 25
+	axisPadding := m.padding * axisLength
 
 	if projection == Log {
 		if value <= 0 {
