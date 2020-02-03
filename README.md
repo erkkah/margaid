@@ -23,6 +23,8 @@ There is no clever layout or layering going on. Each new command draws on top of
 
 ### Minimal example
 
+![Minimal plot](example/minimal.svg)
+
 These are the minimal steps needed to create a Margaid plot:
 * Import the library
 ```go
@@ -31,7 +33,7 @@ import "github.com/erkkah/margaid"
 * Create a series object and add some values
 ```go
 series := margaid.NewSeries()
-series.Add(margaid.MakeValue(1.1, 3.14), margaid.MakeValue(22, 93.8))
+series.Add(margaid.MakeValue(10, 3.14), margaid.MakeValue(90, 93.8))
 // et.c.
 ```
 
@@ -57,64 +59,62 @@ diagram.Render(os.Stdout)
 ```
 
 ### Example showing more features
-Here's a bit richer example to get you started:
 
 ![Example plot](example/example.svg)
 
-To generate the diagram above from the example shown below:
+To generate the diagram above from the code shown below:
 ```sh
 > go run example/example.go > example.svg
 ```
-
 
 ```go
 // example/example.go
 package main
 
 import (
-	"math/rand"
-	"os"
-	"time"
+    "math/rand"
+    "os"
+    "time"
 
-	m "github.com/erkkah/margaid"
+    m "github.com/erkkah/margaid"
 )
 
 func main() {
 
-	randomSeries := m.NewSeries()
-	rand.Seed(time.Now().Unix())
-	for i := float64(0); i < 10; i++ {
-		randomSeries.Add(m.MakeValue(i+1, 200*rand.Float64()))
-	}
+    randomSeries := m.NewSeries()
+    rand.Seed(time.Now().Unix())
+    for i := float64(0); i < 10; i++ {
+        randomSeries.Add(m.MakeValue(i+1, 200*rand.Float64()))
+    }
 
-	testSeries := m.NewSeries()
-	multiplier := 2.1
-	v := 0.33
-	for i := float64(0); i < 10; i++ {
-		v *= multiplier
-		testSeries.Add(m.MakeValue(i+1, v))
-	}
+    testSeries := m.NewSeries()
+    multiplier := 2.1
+    v := 0.33
+    for i := float64(0); i < 10; i++ {
+        v *= multiplier
+        testSeries.Add(m.MakeValue(i+1, v))
+    }
 
-	diagram := m.New(800, 600,
-		m.WithAutorange(m.XAxis, testSeries),
-		m.WithAutorange(m.YAxis, testSeries),
-		m.WithAutorange(m.Y2Axis, testSeries),
-		m.WithProjection(m.YAxis, m.Log),
-		m.WithInset(70),
-		m.WithPadding(2),
-		m.WithColorScheme(90),
-	)
+    diagram := m.New(800, 600,
+        m.WithAutorange(m.XAxis, testSeries),
+        m.WithAutorange(m.YAxis, testSeries),
+        m.WithAutorange(m.Y2Axis, testSeries),
+        m.WithProjection(m.YAxis, m.Log),
+        m.WithInset(70),
+        m.WithPadding(2),
+        m.WithColorScheme(90),
+    )
 
-	diagram.Line(testSeries, m.UsingAxes(m.XAxis, m.YAxis), m.UsingMarker("square"))
-	diagram.Smooth(testSeries, m.UsingAxes(m.XAxis, m.Y2Axis))
-	diagram.Smooth(randomSeries, m.UsingAxes(m.XAxis, m.YAxis), m.UsingMarker("filled-circle"))
-	diagram.Axis(testSeries, m.XAxis, diagram.ValueTicker('f', 0, 10), false, "X")
-	diagram.Axis(testSeries, m.YAxis, diagram.ValueTicker('f', 1, 2), true, "Y")
+    diagram.Line(testSeries, m.UsingAxes(m.XAxis, m.YAxis), m.UsingMarker("square"))
+    diagram.Smooth(testSeries, m.UsingAxes(m.XAxis, m.Y2Axis))
+    diagram.Smooth(randomSeries, m.UsingAxes(m.XAxis, m.YAxis), m.UsingMarker("filled-circle"))
+    diagram.Axis(testSeries, m.XAxis, diagram.ValueTicker('f', 0, 10), false, "X")
+    diagram.Axis(testSeries, m.YAxis, diagram.ValueTicker('f', 1, 2), true, "Y")
 
-	diagram.Frame()
-	diagram.Title("A diagram of sorts 📊 📈")
+    diagram.Frame()
+    diagram.Title("A diagram of sorts 📊 📈")
 
-	diagram.Render(os.Stdout)
+    diagram.Render(os.Stdout)
 }
 ```
 
