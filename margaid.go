@@ -135,11 +135,12 @@ func WithInset(inset float64) Option {
 	}
 }
 
-// WithPadding sets the padding inside the plotting area as a factor
-// [0..1] of the area width and height
+// WithPadding sets the padding inside the plotting area as a percentage
+// [0..20] of the area width and height
 func WithPadding(padding float64) Option {
 	return func(m *Margaid) {
-		m.padding = math.Max(0, math.Min(1, padding))
+		factor := padding / 100
+		m.padding = math.Max(0, math.Min(0.20, factor))
 	}
 }
 

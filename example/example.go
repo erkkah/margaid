@@ -1,3 +1,5 @@
+// +build !minimal
+
 package main
 
 import (
@@ -10,13 +12,13 @@ import (
 
 func main() {
 
-	randomSeries := m.NewSeries(m.Titled("Random"))
+	randomSeries := m.NewSeries()
 	rand.Seed(time.Now().Unix())
 	for i := float64(0); i < 10; i++ {
 		randomSeries.Add(m.MakeValue(i+1, 200*rand.Float64()))
 	}
 
-	testSeries := m.NewSeries(m.Titled("Exponential"))
+	testSeries := m.NewSeries()
 	multiplier := 2.1
 	v := 0.33
 	for i := float64(0); i < 10; i++ {
@@ -28,18 +30,17 @@ func main() {
 		m.WithAutorange(m.XAxis, testSeries),
 		m.WithAutorange(m.YAxis, testSeries),
 		m.WithAutorange(m.Y2Axis, testSeries),
-		m.WithProjection(m.XAxis, m.Lin),
 		m.WithProjection(m.YAxis, m.Log),
-		m.WithProjection(m.Y2Axis, m.Lin),
 		m.WithInset(70),
+		m.WithPadding(2),
 		m.WithColorScheme(90),
 	)
 
 	diagram.Line(testSeries, m.UsingAxes(m.XAxis, m.YAxis), m.UsingMarker("square"))
 	diagram.Smooth(testSeries, m.UsingAxes(m.XAxis, m.Y2Axis))
 	diagram.Smooth(randomSeries, m.UsingAxes(m.XAxis, m.YAxis), m.UsingMarker("filled-circle"))
-	diagram.Axis(testSeries, m.XAxis, diagram.ValueTicker('f', 0, 10), false)
-	diagram.Axis(testSeries, m.YAxis, diagram.ValueTicker('f', 1, 2), true)
+	diagram.Axis(testSeries, m.XAxis, diagram.ValueTicker('f', 0, 10), false, "X")
+	diagram.Axis(testSeries, m.YAxis, diagram.ValueTicker('f', 1, 2), true, "Y")
 
 	diagram.Frame()
 	diagram.Title("A diagram of sorts 📊 📈")

@@ -106,24 +106,42 @@ func MakeValue(x float64, y float64) Value {
 	return Value{X: x, Y: y}
 }
 
-// Add appends a value. If the series is capped, capping
-// will be applied.
-func (s *Series) Add(v Value) {
-	if s.values.Len() == 0 {
-		s.minX = v.X
-		s.maxX = v.X
-		s.minY = v.Y
-		s.maxY = v.Y
-	} else {
-		s.minX = math.Min(s.minX, v.X)
-		s.maxX = math.Max(s.maxX, v.X)
-		s.minY = math.Min(s.minY, v.Y)
-		s.maxY = math.Max(s.maxY, v.Y)
+// Add appends one or more values.
+// If the series is capped, capping will be applied.
+func (s *Series) Add(values ...Value) {
+	for _, v := range values {
+		if s.values.Len() == 0 {
+			s.minX = v.X
+			s.maxX = v.X
+			s.minY = v.Y
+			s.maxY = v.Y
+		} else {
+			s.minX = math.Min(s.minX, v.X)
+			s.maxX = math.Max(s.maxX, v.X)
+			s.minY = math.Min(s.minY, v.Y)
+			s.maxY = math.Max(s.maxY, v.Y)
+		}
+		s.values.PushBack(v)
+		if s.capper != nil {
+			s.capper(s.values)
+		}
 	}
-	s.values.PushBack(v)
-	if s.capper != nil {
-		s.capper(s.values)
+}
+
+// Zip merges two slices of floats into pairs and adds
+// them to the series. It is assumed that the two slices
+// have the same length.
+func (s *Series) Zip(xValues, yValues []float64) {
+	valueCount := len(xValues)
+	if len(yValues) < valueCount {
+		valueCount = len(yValues)
 	}
+
+	zipped := make([]Value, valueCount)
+	for i := range zipped {
+		zipped[i] = MakeValue(xValues[i], yValues[i])
+	}
+	s.Add(zipped...)
 }
 
 // Capper is the capping function type

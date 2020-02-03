@@ -3,15 +3,72 @@
 The world surely doesn't need another plotting library.
 But I did, and that's why Margaid was born.
 
-Margaid is a small, no dependencies Golang library for plotting 2D data to SVG images. Margaid is an old name meaning "pearl", which seems fitting for something shiny and small. It's also the word "diagraM" spelled backwards.
+Margaid is a small, no dependencies Golang library for plotting 2D data to SVG images. The idea is to create nice charts with a few lines of code and not having to bring in heavy machinery.
+
+"Margaid" is an old name meaning "pearl", which seemed fitting for something shiny and small.
+It's also the word "diagraM" spelled backwards.
+
+## Features
+
+Margaid plots series of data to an SVG image.
+Plots are drawn using straight lines, smooth lines or bars.
+Line plots can have data point markers.
+Each axis has a fixed or automatic range, linear or log projection, configurable labels and optional grid lines.
+
+Plot colors are automatically picked for each new plot, trying to spread them in hue and saturation to get a good mix.
+
+There is no clever layout or layering going on. Each new command draws on top of the results from previous commands.
 
 ## Getting started
 
-Here's a little example to get you started.
+### Minimal example
+
+These are the minimal steps needed to create a Margaid plot:
+* Import the library
+```go
+import "github.com/erkkah/margaid"
+```
+* Create a series object and add some values
+```go
+series := margaid.NewSeries()
+series.Add(margaid.MakeValue(1.1, 3.14), margaid.MakeValue(22, 93.8))
+// et.c.
+```
+
+* Create the diagram object:
+```go
+diagram := margaid.New(800, 600)
+```
+
+* Plot the series
+```go
+diagram.Line(series)
+```
+
+* Add a frame and X axis
+```go
+diagram.Frame()
+diagram.Axis(series, margaid.XAxis, diagram.ValueTicker('f', 2, 10), false, "Values")
+```
+
+* Render to stdout
+```go
+diagram.Render(os.Stdout)
+```
+
+### Example showing more features
+Here's a bit richer example to get you started:
 
 ![Example plot](example/example.svg)
 
+To generate the diagram above from the example shown below:
+```sh
+> go run example/example.go > example.svg
+```
+
+
 ```go
+// example/example.go
 package main
 
 import (
@@ -24,13 +81,13 @@ import (
 
 func main() {
 
-	randomSeries := m.NewSeries(m.Titled("Random"))
+	randomSeries := m.NewSeries()
 	rand.Seed(time.Now().Unix())
 	for i := float64(0); i < 10; i++ {
 		randomSeries.Add(m.MakeValue(i+1, 200*rand.Float64()))
 	}
 
-	testSeries := m.NewSeries(m.Titled("Exponential"))
+	testSeries := m.NewSeries()
 	multiplier := 2.1
 	v := 0.33
 	for i := float64(0); i < 10; i++ {
@@ -42,18 +99,17 @@ func main() {
 		m.WithAutorange(m.XAxis, testSeries),
 		m.WithAutorange(m.YAxis, testSeries),
 		m.WithAutorange(m.Y2Axis, testSeries),
-		m.WithProjection(m.XAxis, m.Lin),
 		m.WithProjection(m.YAxis, m.Log),
-		m.WithProjection(m.Y2Axis, m.Lin),
 		m.WithInset(70),
+		m.WithPadding(2),
 		m.WithColorScheme(90),
 	)
 
 	diagram.Line(testSeries, m.UsingAxes(m.XAxis, m.YAxis), m.UsingMarker("square"))
 	diagram.Smooth(testSeries, m.UsingAxes(m.XAxis, m.Y2Axis))
 	diagram.Smooth(randomSeries, m.UsingAxes(m.XAxis, m.YAxis), m.UsingMarker("filled-circle"))
-	diagram.Axis(testSeries, m.XAxis, diagram.ValueTicker('f', 0, 10), false)
-	diagram.Axis(testSeries, m.YAxis, diagram.ValueTicker('f', 1, 2), true)
+	diagram.Axis(testSeries, m.XAxis, diagram.ValueTicker('f', 0, 10), false, "X")
+	diagram.Axis(testSeries, m.YAxis, diagram.ValueTicker('f', 1, 2), true, "Y")
 
 	diagram.Frame()
 	diagram.Title("A diagram of sorts 📊 📈")
@@ -61,3 +117,6 @@ func main() {
 	diagram.Render(os.Stdout)
 }
 ```
+
+## Documentation
+For more details, check the [reference documentation](https://pkg.go.dev/github.com/erkkah/margaid).
