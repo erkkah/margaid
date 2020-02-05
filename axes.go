@@ -107,7 +107,7 @@ func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool, titl
 		svg.Scaling(1, 1),
 	).
 		Font(m.labelFamily, fmt.Sprintf("%dpx", m.labelSize)).
-		FontStyle(svg.StyleNormal, svg.WeightLighter).
+		FontStyle(svg.StyleNormal, svg.WeightNormal).
 		Alignment(hAlignment, vAlignment).
 		Fill("black")
 

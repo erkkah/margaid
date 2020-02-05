@@ -10,9 +10,10 @@ It's also the word "diagraM" spelled backwards.
 
 ## Features
 
-Margaid plots series of data to an SVG image.
+Margaid plots series of data to an SVG image. Series can be capped by size or time to simplify realtime data collection.
+
 Plots are drawn using straight lines, smooth lines or bars.
-Line plots can have data point markers.
+
 Each axis has a fixed or automatic range, linear or log projection, configurable labels and optional grid lines.
 
 Plot colors are automatically picked for each new plot, trying to spread them in hue and saturation to get a good mix.
@@ -30,14 +31,14 @@ These are the minimal steps needed to create a Margaid plot:
 ```go
 import "github.com/erkkah/margaid"
 ```
-* Create a series object and add some values
+* Create a series and add some values
 ```go
 series := margaid.NewSeries()
 series.Add(margaid.MakeValue(10, 3.14), margaid.MakeValue(90, 93.8))
 // et.c.
 ```
 
-* Create the diagram object:
+* Create the diagram:
 ```go
 diagram := margaid.New(800, 600)
 ```

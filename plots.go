@@ -91,7 +91,7 @@ func (m *Margaid) Smooth(series *Series, using ...Using) {
 	id := m.addPlot(series.title)
 	color := m.getPlotColor(id)
 	m.g.
-		StrokeWidth("4").
+		StrokeWidth("3px").
 		Fill("none").
 		Stroke(color).
 		Marker(options.marker).
