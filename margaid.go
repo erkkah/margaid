@@ -266,9 +266,10 @@ func (m *Margaid) Frame() {
 }
 
 // Render renders the graph to the given destination.
-func (m *Margaid) Render(writer io.Writer) {
+func (m *Margaid) Render(writer io.Writer) error {
 	rendered := m.g.Render()
-	writer.Write([]byte(rendered))
+	_, err := writer.Write([]byte(rendered))
+	return err
 }
 
 // Projects a value onto an axis using the current projection

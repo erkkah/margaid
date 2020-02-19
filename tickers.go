@@ -39,9 +39,10 @@ func (t *timeTicker) start(axis Axis, series *Series, steps int) float64 {
 
 	t.step = math.Pow(10.0, math.Trunc(math.Log10(scaleDuration.Seconds()/float64(steps))))
 	for int(scaleRange/t.step) > steps {
-		t.step *= 2
+		t.step += 1.0
 	}
-	return t.step
+	start := minmax.min - math.Mod(minmax.min, t.step) + t.step
+	return start
 }
 
 func (t *timeTicker) next(previous float64) (float64, bool) {
@@ -81,13 +82,13 @@ func (t *valueTicker) start(axis Axis, series *Series, steps int) float64 {
 	floatBase := float64(t.base)
 
 	if t.projection == Lin {
-		roundedLog := math.Round(math.Log(scaleRange/float64(steps)) / math.Log(floatBase))
+		roundedLog := math.Floor(math.Log(scaleRange/float64(steps)) / math.Log(floatBase))
 		t.step = math.Pow(floatBase, roundedLog)
 
 		for int(scaleRange/t.step) > steps {
-			t.step *= 2
+			t.step += 1.0
 		}
-		startValue = t.step
+		startValue := minmax.min - math.Mod(minmax.min, t.step) + t.step
 		return startValue
 	}
 
