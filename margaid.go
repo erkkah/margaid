@@ -112,18 +112,27 @@ func WithRange(axis Axis, min, max float64) Option {
 // WithAutorange sets range for an axis from the values of a series
 func WithAutorange(axis Axis, series *Series) Option {
 	return func(m *Margaid) {
+		var axisRange minmax
+
 		if axis == X1Axis || axis == X2Axis {
-			m.ranges[axis] = minmax{
+			axisRange = minmax{
 				series.MinX(),
 				series.MaxX(),
 			}
 		}
 		if axis == Y1Axis || axis == Y2Axis {
-			m.ranges[axis] = minmax{
+			axisRange = minmax{
 				series.MinY(),
 				series.MaxY(),
 			}
 		}
+
+		if axisRange.min == axisRange.max {
+			axisRange.min -= 1.0
+			axisRange.max += 1.0
+		}
+
+		m.ranges[axis] = axisRange
 	}
 }
 

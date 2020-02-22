@@ -14,8 +14,13 @@ type Series struct {
 	minY   float64
 	maxY   float64
 
-	title  string
-	capper Capper
+	title string
+
+	capper     Capper
+	aggregator Aggregator
+	interval   time.Duration
+	buffer     []Value
+	at         time.Time
 }
 
 // SeriesOption is the base type for all series options
@@ -106,9 +111,38 @@ func MakeValue(x float64, y float64) Value {
 	return Value{X: x, Y: y}
 }
 
-// Add appends one or more values.
-// If the series is capped, capping will be applied.
+// Add appends one or more values, optionally
+// peforming aggregation.
+// If the series is capped, capping will be applied
+// after aggregation.
 func (s *Series) Add(values ...Value) {
+	if len(values) == 0 {
+		return
+	}
+
+	if s.aggregator != nil {
+
+		if s.values.Len() == 0 && len(s.buffer) == 0 {
+			s.at = TimeFromSeconds(values[0].X).Truncate(s.interval)
+		}
+
+		var aggregated []Value
+
+		for _, v := range values {
+			at := TimeFromSeconds(v.X)
+			if s.at.Add(s.interval).Before(at) {
+				agg := s.aggregator(s.buffer, s.at)
+				aggregated = append(aggregated, agg)
+				s.at = at.Truncate(s.interval)
+				s.buffer = append(s.buffer[0:0], v)
+			} else {
+				s.buffer = append(s.buffer, v)
+			}
+		}
+
+		values = aggregated
+	}
+
 	for _, v := range values {
 		if s.values.Len() == 0 {
 			s.minX = v.X
@@ -144,15 +178,45 @@ func (s *Series) Zip(xValues, yValues []float64) {
 	s.Add(zipped...)
 }
 
+func (s *Series) updateMinMax() {
+	if s.values.Len() == 0 {
+		return
+	}
+
+	values := s.Values()
+	values.Next()
+	current := values.Get()
+	s.minX = current.X
+	s.maxX = current.X
+	s.minY = current.Y
+	s.maxY = current.Y
+
+	for values.Next() {
+		current = values.Get()
+		s.minX = math.Min(s.minX, current.X)
+		s.maxX = math.Max(s.maxX, current.X)
+		s.minY = math.Min(s.minY, current.Y)
+		s.maxY = math.Max(s.maxY, current.Y)
+	}
+}
+
 // Capper is the capping function type
 type Capper func(values *list.List)
+
+// Aggregator is the aggregating function type
+type Aggregator func(values []Value, at time.Time) Value
 
 // CappedBySize caps a series to at most cap values.
 func CappedBySize(cap int) SeriesOption {
 	return func(s *Series) {
 		s.capper = func(values *list.List) {
+			removed := false
 			for values.Len() > cap {
 				values.Remove(values.Front())
+				removed = true
+			}
+			if removed {
+				s.updateMinMax()
 			}
 		}
 	}
@@ -163,6 +227,7 @@ func CappedBySize(cap int) SeriesOption {
 func CappedByAge(cap time.Duration, reference func() time.Time) SeriesOption {
 	return func(s *Series) {
 		s.capper = func(values *list.List) {
+			removed := false
 			for values.Len() > 0 {
 				first := values.Front()
 				val := first.Value.(Value)
@@ -171,8 +236,57 @@ func CappedByAge(cap time.Duration, reference func() time.Time) SeriesOption {
 					break
 				}
 				values.Remove(first)
+				removed = true
+			}
+			if removed {
+				s.updateMinMax()
 			}
 		}
+	}
+}
+
+// Avg calculates the Y average of a list of values,
+// reported as observed at the given time.
+func Avg(values []Value, at time.Time) Value {
+	if len(values) == 0 {
+		return Value{}
+	}
+
+	var sum float64
+	for _, v := range values {
+		sum += v.Y
+	}
+	avg := sum / float64(len(values))
+	return Value{SecondsFromTime(at), avg}
+}
+
+// Sum calculates the Y sum of a list of values,
+// reported as observed at the given time.
+func Sum(values []Value, at time.Time) Value {
+	var sum float64
+	for _, v := range values {
+		sum += v.Y
+	}
+	return Value{SecondsFromTime(at), sum}
+}
+
+// Delta calculates the Y difference between the first and
+// last value in the list, reported as observed at the given time.
+func Delta(values []Value, at time.Time) Value {
+	if len(values) < 2 {
+		return Value{}
+	}
+
+	first := values[0].Y
+	last := values[len(values)-1].Y
+	return Value{SecondsFromTime(at), last - first}
+}
+
+// AggregatedBy sets the series aggregator
+func AggregatedBy(f Aggregator, interval time.Duration) SeriesOption {
+	return func(s *Series) {
+		s.aggregator = f
+		s.interval = interval
 	}
 }
 
