@@ -243,7 +243,8 @@ func (m *Margaid) Legend(position LegendPosition) {
 			Font(m.labelFamily, fmt.Sprintf("%dpx", m.labelSize)).
 			FontStyle(svg.StyleNormal, svg.WeightNormal).
 			Alignment(svg.HAlignStart, svg.VAlignTop).
-			Fill(color)
+			Color(color).
+			StrokeWidth("1px")
 	}
 
 	for i, plot := range plots {
