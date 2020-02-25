@@ -38,10 +38,17 @@ func (t *timeTicker) start(axis Axis, series *Series, steps int) float64 {
 	scaleDuration := TimeFromSeconds(scaleRange).Sub(time.Unix(0, 0))
 
 	t.step = math.Pow(10.0, math.Trunc(math.Log10(scaleDuration.Seconds()/float64(steps))))
+	base := t.step
 	for int(scaleRange/t.step) > steps {
-		t.step += 1.0
+		t.step += base
 	}
-	start := minmax.min - math.Mod(minmax.min, t.step) + t.step
+
+	durationStep := time.Duration(t.step)
+	durationStart := time.Duration(minmax.min)
+	start := (durationStart * time.Second).Truncate(durationStep).Seconds()
+	if start < minmax.min {
+		start += t.step
+	}
 	return start
 }
 
@@ -84,11 +91,12 @@ func (t *valueTicker) start(axis Axis, series *Series, steps int) float64 {
 	if t.projection == Lin {
 		roundedLog := math.Floor(math.Log(scaleRange/float64(steps)) / math.Log(floatBase))
 		t.step = math.Pow(floatBase, roundedLog)
-
+		base := t.step
 		for int(scaleRange/t.step) > steps {
-			t.step += 1.0
+			t.step += base
 		}
-		startValue := minmax.min - math.Mod(minmax.min, t.step) + t.step
+		wholeSteps := math.Ceil(minmax.min / t.step)
+		startValue = wholeSteps * t.step
 		return startValue
 	}
 

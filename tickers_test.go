@@ -26,7 +26,7 @@ func TestTimeTickerStart(t *testing.T) {
 	start := ticker.start(XAxis, s, 10)
 
 	// 60 secs in 10 steps leads to 6s step size
-	x.Equal(start, min+6)
+	x.Equal(start, min)
 }
 
 func TestTimeTickerStep(t *testing.T) {
@@ -53,7 +53,7 @@ func TestTimeTickerStep(t *testing.T) {
 		count++
 	}
 
-	x.Equal(count, 10)
+	x.Equal(count, 11)
 	x.Assert(more)
 }
 
@@ -153,5 +153,30 @@ func TestValueTickerStep_Log(t *testing.T) {
 
 	// There are 4 base 10 marks in the range [20.0, 50.0]
 	x.Equal(count, 4)
+	x.Assert(more)
+}
+
+func TestValueTickerSimpleRange(t *testing.T) {
+	x := xt.X(t)
+
+	s := NewSeries()
+	s.Add(MakeValue(1, 0))
+	s.Add(MakeValue(2, 0))
+	s.Add(MakeValue(3, 0))
+
+	max := 1.0
+	m := New(100, 100, WithAutorange(XAxis, s), WithAutorange(YAxis, s))
+	ticker := m.ValueTicker('f', 0, 10)
+
+	step := ticker.start(YAxis, s, 10)
+
+	more := true
+	count := 0
+	for ; step <= max && more; step, more = ticker.next(step) {
+		count++
+	}
+
+	// There are 5+1+5 base 10 marks in the range [-1.0, 1.0]
+	x.Equal(count, 11)
 	x.Assert(more)
 }
