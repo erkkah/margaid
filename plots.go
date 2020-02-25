@@ -130,9 +130,11 @@ func (m *Margaid) Bar(series []*Series, using ...Using) {
 		}
 	}
 
-	barWidth := (m.width - 2*m.inset) / float64(maxSize)
+	plotWidth := (m.width - 2*m.inset)
+	barWidth := plotWidth / float64(maxSize)
 	barWidth /= 1.5
 	barWidth /= float64(len(series))
+	barWidth = math.Min(barWidth, plotWidth/5)
 	barOffset := -(barWidth / 2) * float64(len(series)-1)
 
 	for i, s := range series {
