@@ -89,7 +89,7 @@ func (t *valueTicker) start(axis Axis, series *Series, steps int) float64 {
 	floatBase := float64(t.base)
 
 	if t.projection == Lin {
-		roundedLog := math.Floor(math.Log(scaleRange/float64(steps)) / math.Log(floatBase))
+		roundedLog := math.Round(math.Log(scaleRange/float64(steps)) / math.Log(floatBase))
 		t.step = math.Pow(floatBase, roundedLog)
 		base := t.step
 		for int(scaleRange/t.step) > steps {
