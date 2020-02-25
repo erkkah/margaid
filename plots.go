@@ -133,8 +133,8 @@ func (m *Margaid) Bar(series []*Series, using ...Using) {
 	plotWidth := (m.width - 2*m.inset)
 	barWidth := plotWidth / float64(maxSize)
 	barWidth /= 1.5
+	barWidth = math.Min(barWidth, tickDistance)
 	barWidth /= float64(len(series))
-	barWidth = math.Min(barWidth, plotWidth/5)
 	barOffset := -(barWidth / 2) * float64(len(series)-1)
 
 	for i, s := range series {
@@ -148,8 +148,7 @@ func (m *Margaid) Bar(series []*Series, using ...Using) {
 		color := m.getPlotColor(id)
 		m.g.
 			StrokeWidth("1px").
-			Fill(color).
-			Stroke(color).
+			Color(color).
 			Transform(
 				svg.Translation(m.inset, m.height-m.inset),
 				svg.Scaling(1, -1),
@@ -159,6 +158,7 @@ func (m *Margaid) Bar(series []*Series, using ...Using) {
 			m.g.Rect(barOffset+float64(i)*barWidth+p.X-barWidth/2, 0, barWidth, p.Y)
 		}
 	}
+	m.g.Transform()
 
 }
 
