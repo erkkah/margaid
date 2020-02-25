@@ -1,4 +1,4 @@
-// +build !minimal
+// +build example
 
 package main
 

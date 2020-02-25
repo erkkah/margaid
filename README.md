@@ -65,7 +65,7 @@ diagram.Render(os.Stdout)
 
 To generate the diagram above from the code shown below:
 ```sh
-> go run example/example.go > example.svg
+> go run -tags example ./example > example.svg
 ```
 
 ```go
