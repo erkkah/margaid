@@ -106,8 +106,8 @@ func main() {
         m.WithColorScheme(90),
     )
 
-    diagram.Line(testSeries, m.UsingAxes(m.XAxis, m.YAxis), m.UsingMarker("square"))
-    diagram.Smooth(testSeries, m.UsingAxes(m.XAxis, m.Y2Axis))
+    diagram.Line(testSeries, m.UsingAxes(m.XAxis, m.YAxis), m.UsingMarker("square"), m.UsingStrokeWidth(1))
+    diagram.Smooth(testSeries, m.UsingAxes(m.XAxis, m.Y2Axis), m.UsingStrokeWidth(3.14))
     diagram.Smooth(randomSeries, m.UsingAxes(m.XAxis, m.YAxis), m.UsingMarker("filled-circle"))
     diagram.Axis(testSeries, m.XAxis, diagram.ValueTicker('f', 0, 10), false, "X")
     diagram.Axis(testSeries, m.YAxis, diagram.ValueTicker('f', 1, 2), true, "Y")
