@@ -101,8 +101,8 @@ func TestValueTickerStep_Lin(t *testing.T) {
 		count++
 	}
 
-	// There are nine marks in the range [15.0, 55.0]
-	x.Equal(count, 9)
+	// There are four marks in the range [10.0, 50.0]
+	x.Equal(count, 4)
 	x.Assert(more)
 }
 

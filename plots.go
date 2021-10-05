@@ -15,9 +15,10 @@ type AxisSelection struct {
 }
 
 type plotOptions struct {
-	xAxis  Axis
-	yAxis  Axis
-	marker string
+	xAxis       Axis
+	yAxis       Axis
+	marker      string
+	strokeWidth float32
 }
 
 // Using is the base type for plotting options
@@ -25,8 +26,9 @@ type Using func(*plotOptions)
 
 func getPlotOptions(using []Using) plotOptions {
 	options := plotOptions{
-		xAxis: XAxis,
-		yAxis: YAxis,
+		xAxis:       XAxis,
+		yAxis:       YAxis,
+		strokeWidth: 3,
 	}
 
 	for _, u := range using {
@@ -52,6 +54,12 @@ func UsingMarker(marker string) Using {
 	}
 }
 
+func UsingStrokeWidth(width float32) Using {
+	return func(o *plotOptions) {
+		o.strokeWidth = width
+	}
+}
+
 // Line draws a series using straight lines
 func (m *Margaid) Line(series *Series, using ...Using) {
 	options := getPlotOptions(using)
@@ -65,7 +73,7 @@ func (m *Margaid) Line(series *Series, using ...Using) {
 	id := m.addPlot(series.title)
 	color := m.getPlotColor(id)
 	m.g.
-		StrokeWidth("3px").
+		StrokeWidth(fmt.Sprintf("%vpx", options.strokeWidth)).
 		Fill("none").
 		Stroke(color).
 		Marker(options.marker).
@@ -91,7 +99,7 @@ func (m *Margaid) Smooth(series *Series, using ...Using) {
 	id := m.addPlot(series.title)
 	color := m.getPlotColor(id)
 	m.g.
-		StrokeWidth("3px").
+		StrokeWidth(fmt.Sprintf("%vpx", options.strokeWidth)).
 		Fill("none").
 		Stroke(color).
 		Marker(options.marker).

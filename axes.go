@@ -22,12 +22,12 @@ const (
 
 // Axis draws tick marks and labels using the specified ticker
 func (m *Margaid) Axis(series *Series, axis Axis, ticker Ticker, grid bool, title string) {
-	var xOffset float64 = m.inset
-	var yOffset float64 = m.inset
+	var xOffset = m.inset
+	var yOffset = m.inset
 	var axisLength float64
 	var crossLength float64
-	var xMult float64 = 0
-	var yMult float64 = 0
+	var xMult float64
+	var yMult float64
 	var tickSign float64 = 1
 	var vAlignment svg.VAlignment
 	var hAlignment svg.HAlignment

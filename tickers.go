@@ -32,7 +32,7 @@ func (t *timeTicker) label(value float64) string {
 	return svg.EncodeText(formatted, svg.HAlignMiddle)
 }
 
-func (t *timeTicker) start(axis Axis, series *Series, steps int) float64 {
+func (t *timeTicker) start(axis Axis, _ *Series, steps int) float64 {
 	minmax := t.m.ranges[axis]
 	scaleRange := minmax.max - minmax.min
 	scaleDuration := TimeFromSeconds(scaleRange).Sub(time.Unix(0, 0))
@@ -80,7 +80,7 @@ func (t *valueTicker) label(value float64) string {
 	return strconv.FormatFloat(value, t.style, t.precision, 64)
 }
 
-func (t *valueTicker) start(axis Axis, series *Series, steps int) float64 {
+func (t *valueTicker) start(axis Axis, _ *Series, steps int) float64 {
 	t.projection = t.m.projections[axis]
 	minmax := t.m.ranges[axis]
 	scaleRange := minmax.max - minmax.min
@@ -145,7 +145,7 @@ func (t *labeledTicker) label(value float64) string {
 	return svg.EncodeText(t.labeler(value), svg.HAlignMiddle)
 }
 
-func (t *labeledTicker) start(axis Axis, series *Series, steps int) float64 {
+func (t *labeledTicker) start(axis Axis, series *Series, _ int) float64 {
 	var values []float64
 
 	var get func(v Value) float64
