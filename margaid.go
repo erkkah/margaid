@@ -22,6 +22,7 @@ type Margaid struct {
 	ranges      map[Axis]minmax
 
 	plots       []string
+	background  string
 	colorScheme int
 
 	titleFamily string
@@ -49,8 +50,6 @@ func New(width, height int, options ...Option) *Margaid {
 	defaultRange := minmax{0, 100}
 
 	self := &Margaid{
-		g: svg.New(width, height),
-
 		inset:   defaultInset,
 		width:   float64(width),
 		height:  float64(height),
@@ -70,6 +69,7 @@ func New(width, height int, options ...Option) *Margaid {
 			Y2Axis: defaultRange,
 		},
 
+		background:  "transparent",
 		colorScheme: 198,
 		titleFamily: "sans-serif",
 		titleSize:   18,
@@ -80,6 +80,8 @@ func New(width, height int, options ...Option) *Margaid {
 	for _, o := range options {
 		o(self)
 	}
+
+	self.g = svg.New(width, height, self.background)
 
 	return self
 }
@@ -150,6 +152,14 @@ func WithPadding(padding float64) Option {
 	return func(m *Margaid) {
 		factor := padding / 100
 		m.padding = math.Max(0, math.Min(0.20, factor))
+	}
+}
+
+// WithBackgroundColor sets the chart background color as a valid SVG
+// color attribute string. Default is transparent.
+func WithBackgroundColor(background string) Option {
+	return func(m *Margaid) {
+		m.background = background
 	}
 }
 
@@ -304,11 +314,11 @@ func (m *Margaid) project(value float64, axis Axis) (float64, error) {
 
 	if projection == Log {
 		if value <= 0 {
-			return 0, fmt.Errorf("Cannot draw values <= 0 on log scale")
+			return 0, fmt.Errorf("cannot draw values <= 0 on log scale")
 		}
 
 		if min <= 0 || max <= 0 {
-			return 0, fmt.Errorf("Cannot have axis range <= 0 on log scale")
+			return 0, fmt.Errorf("cannot have axis range <= 0 on log scale")
 		}
 
 		projected = math.Log10(value)
@@ -326,7 +336,13 @@ func (m *Margaid) getProjectedValues(series *Series, xAxis, yAxis Axis) (points 
 	for values.Next() {
 		v := values.Get()
 		v.X, err = m.project(v.X, xAxis)
+		if err != nil {
+			return
+		}
 		v.Y, err = m.project(v.Y, yAxis)
+		if err != nil {
+			return
+		}
 		points = append(points, v)
 	}
 	return

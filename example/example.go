@@ -1,3 +1,4 @@
+//go:build example
 // +build example
 
 package main
@@ -34,6 +35,7 @@ func main() {
 		m.WithInset(70),
 		m.WithPadding(2),
 		m.WithColorScheme(90),
+		m.WithBackgroundColor("white"),
 	)
 
 	diagram.Line(testSeries, m.UsingAxes(m.XAxis, m.YAxis), m.UsingMarker("square"), m.UsingStrokeWidth(1))

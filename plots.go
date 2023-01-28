@@ -8,12 +8,6 @@ import (
 	"github.com/erkkah/margaid/svg"
 )
 
-// AxisSelection specified which axes to use
-type AxisSelection struct {
-	x Axis
-	y Axis
-}
-
 type plotOptions struct {
 	xAxis       Axis
 	yAxis       Axis
