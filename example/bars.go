@@ -1,3 +1,4 @@
+//go:build bars
 // +build bars
 
 package main
@@ -31,7 +32,7 @@ func main() {
 
 	// Create the diagram object,
 	// add some padding for the bars and extra inset for the legend
-	diagram := margaid.New(800, 600, margaid.WithPadding(10), margaid.WithInset(80))
+	diagram := margaid.New(800, 600, margaid.WithPadding(10), margaid.WithInset(80), margaid.WithBackgroundColor("white"))
 
 	// Plot the series
 	diagram.Bar([]*margaid.Series{seriesA, seriesB})

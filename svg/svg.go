@@ -26,13 +26,14 @@ type Transform struct {
 }
 
 // New - SVG constructor
-func New(width int, height int) *SVG {
+func New(width int, height int, background string) *SVG {
 	self := makeSVG()
 	self.brackets.Open("svg", br.Attributes{
 		"width":               strconv.Itoa(width),
 		"height":              strconv.Itoa(height),
 		"viewbox":             fmt.Sprintf("0 0 %d %d", width, height),
 		"preserveAspectRatio": "xMidYMid meet",
+		"style":               fmt.Sprintf("background-color:%s", background),
 		"xmlns":               "http://www.w3.org/2000/svg",
 	})
 	self.addMarkers()
@@ -386,14 +387,14 @@ type Weight string
 // Text style constants
 const (
 	StyleNormal Style = "normal"
-	StyleItalic       = "italic"
+	StyleItalic Style = "italic"
 )
 
 // Text weight constants
 const (
 	WeightNormal  Weight = "normal"
-	WeightBold           = "bold"
-	WeightLighter        = "lighter"
+	WeightBold    Weight = "bold"
+	WeightLighter Weight = "lighter"
 )
 
 // FontStyle sets the current font style and weight
@@ -412,15 +413,15 @@ type HAlignment string
 // Horizontal text alignment constants
 const (
 	HAlignStart  HAlignment = "start"
-	HAlignMiddle            = "middle"
-	HAlignEnd               = "end"
+	HAlignMiddle HAlignment = "middle"
+	HAlignEnd    HAlignment = "end"
 )
 
 // Vertical text alignment constants
 const (
 	VAlignTop     VAlignment = "hanging"
-	VAlignCentral            = "middle"
-	VAlignBottom             = "baseline"
+	VAlignCentral VAlignment = "middle"
+	VAlignBottom  VAlignment = "baseline"
 )
 
 // Alignment sets current text alignment

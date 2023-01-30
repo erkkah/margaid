@@ -1,3 +1,4 @@
+//go:build minimal
 // +build minimal
 
 package main
@@ -14,7 +15,7 @@ func main() {
 	series.Add(margaid.MakeValue(10, 3.14), margaid.MakeValue(90, 93.8))
 
 	// Create the diagram object:
-	diagram := margaid.New(800, 600)
+	diagram := margaid.New(800, 600, margaid.WithBackgroundColor("white"))
 
 	// Plot the series
 	diagram.Line(series)
