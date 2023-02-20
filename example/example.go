@@ -16,7 +16,7 @@ func main() {
 	randomSeries := m.NewSeries()
 	rand.Seed(time.Now().Unix())
 	for i := float64(0); i < 10; i++ {
-		randomSeries.Add(m.MakeValue(i+1, 200*rand.Float64()))
+		randomSeries.Add(m.MakeValue(i+1, 1000*rand.Float64()))
 	}
 
 	testSeries := m.NewSeries()
@@ -29,7 +29,7 @@ func main() {
 
 	diagram := m.New(800, 600,
 		m.WithAutorange(m.XAxis, testSeries),
-		m.WithAutorange(m.YAxis, testSeries),
+		m.WithAutorange(m.YAxis, testSeries, randomSeries),
 		m.WithAutorange(m.Y2Axis, testSeries),
 		m.WithProjection(m.YAxis, m.Log),
 		m.WithInset(70),
