@@ -124,6 +124,7 @@ func (b *Brackets) popElement() *Element {
 	return top.Value.(*Element)
 }
 
+// First returns the first element of the underlying list of elements.
 func (b *Brackets) First() *Element {
 	return b.elements.Front().Value.(*Element)
 }
