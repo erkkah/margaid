@@ -222,7 +222,8 @@ const (
 	BottomLeft
 )
 
-// Legend draws a legend for named plots
+// Legend draws a legend for named plots. If position is set to BottomLeft, it
+// will grow the plot size to accommodate the number of legends displayed.
 func (m *Margaid) Legend(position LegendPosition) {
 	type namedPlot struct {
 		name  string
@@ -276,6 +277,11 @@ func (m *Margaid) Legend(position LegendPosition) {
 		m.g.Rect(xPos, yPos, boxSize, boxSize)
 		style("black")
 		m.g.Text(xPos+boxSize+textSpacing, yPos, brackets.XMLEscape(plot.name))
+	}
+
+	if position == BottomLeft {
+		newHeight := int(m.height + lineHeight*float64(len(plots)))
+		m.g.SetSize(int(m.width), newHeight)
 	}
 }
 

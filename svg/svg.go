@@ -40,6 +40,13 @@ func New(width int, height int, background string) *SVG {
 	return &self
 }
 
+// SetSize of SVG, redefining the value given during construction.
+func (svg *SVG) SetSize(width, height int) {
+	elem := svg.brackets.First()
+	elem.SetAttribute("width", strconv.Itoa(width))
+	elem.SetAttribute("height", strconv.Itoa(height))
+}
+
 func (svg *SVG) addMarkers() {
 	svg.brackets.Open("defs").
 		Open("marker", br.Attributes{
