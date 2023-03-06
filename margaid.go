@@ -111,21 +111,32 @@ func WithRange(axis Axis, min, max float64) Option {
 	}
 }
 
-// WithAutorange sets range for an axis from the values of a series
-func WithAutorange(axis Axis, series *Series) Option {
+// WithAutorange sets range for an axis from the values of one or more series
+func WithAutorange(axis Axis, series ...*Series) Option {
 	return func(m *Margaid) {
 		var axisRange minmax
 
-		if axis == X1Axis || axis == X2Axis {
-			axisRange = minmax{
-				series.MinX(),
-				series.MaxX(),
+		for idx, s := range series {
+			var newAxisRange minmax
+			if axis == X1Axis || axis == X2Axis {
+				newAxisRange = minmax{
+					s.MinX(),
+					s.MaxX(),
+				}
 			}
-		}
-		if axis == Y1Axis || axis == Y2Axis {
-			axisRange = minmax{
-				series.MinY(),
-				series.MaxY(),
+			if axis == Y1Axis || axis == Y2Axis {
+				newAxisRange = minmax{
+					s.MinY(),
+					s.MaxY(),
+				}
+			}
+			if idx == 0 {
+				axisRange = newAxisRange
+			} else {
+				axisRange = minmax{
+					math.Min(axisRange.min, newAxisRange.min),
+					math.Max(axisRange.max, newAxisRange.max),
+				}
 			}
 		}
 
@@ -211,7 +222,8 @@ const (
 	BottomLeft
 )
 
-// Legend draws a legend for named plots
+// Legend draws a legend for named plots. If position is set to BottomLeft, it
+// will grow the plot size to accommodate the number of legends displayed.
 func (m *Margaid) Legend(position LegendPosition) {
 	type namedPlot struct {
 		name  string
@@ -265,6 +277,11 @@ func (m *Margaid) Legend(position LegendPosition) {
 		m.g.Rect(xPos, yPos, boxSize, boxSize)
 		style("black")
 		m.g.Text(xPos+boxSize+textSpacing, yPos, brackets.XMLEscape(plot.name))
+	}
+
+	if position == BottomLeft {
+		newHeight := int(m.height + lineHeight*float64(len(plots)))
+		m.g.SetSize(int(m.width), newHeight)
 	}
 }
 

@@ -124,6 +124,11 @@ func (b *Brackets) popElement() *Element {
 	return top.Value.(*Element)
 }
 
+// First returns the first element of the underlying list of elements.
+func (b *Brackets) First() *Element {
+	return b.elements.Front().Value.(*Element)
+}
+
 // Open adds a new opening element with optional attributes.
 func (b *Brackets) Open(name string, attrs ...Attributes) *Brackets {
 	if top := b.topElement(); top != nil {
@@ -165,7 +170,7 @@ func (b *Brackets) Text(txt string) *Brackets {
 
 // Close closes the current element. If there are no
 // children (elements or text), the current element will
-// be self-closed. Otherwise a matching close-element
+// be self-closed. Otherwise, a matching close-element
 // will be added.
 func (b *Brackets) Close() *Brackets {
 	top := b.popElement()
